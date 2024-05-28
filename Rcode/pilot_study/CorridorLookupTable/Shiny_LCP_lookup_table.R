@@ -1,0 +1,47 @@
+################ Amazon least cost path characteristics Shiny app #################
+# Date: 4-25-24
+# updated: 
+# Author: Ian McCullough, immccull@gmail.com
+###################################################################################
+
+#### R libraries ####
+library(shiny)
+library(DT)
+library(htmltools)
+
+#### Input data ####
+# made in LeastCostPaths_Characteristics.R
+lookup <- read.csv("LCP_lookup_table.csv")
+
+#### Main program ####
+# with help from: https://clarewest.github.io/blog/post/making-tables-shiny/
+# first, clean up table for Shiny app
+lookup_shiny <- lookup
+lookup_shiny$Length_km <- round(lookup_shiny$Length_km, digits=0)
+lookup_shiny$Protection_pct <- round(lookup_shiny$Protection_pct, digits=0)
+lookup_shiny$Roads_perkm <- round(lookup_shiny$Roads_perkm, digits=5)
+names(lookup_shiny) <- c('Start','Start country','End','End country',
+                         'Length (km)', 'Elevation gain (m)',
+                         'Protection (%)','Total roads' ,'Roads per km')
+
+
+ui <- fluidPage(titlePanel("Amazon corridor characteristics"),
+                mainPanel(width = 12,
+                          DT::dataTableOutput("mytable")))
+
+server <- function(input, output) {
+  output$mytable <- DT::renderDataTable(lookup_shiny,
+                                        options = list(scrollX = TRUE),
+                                        rownames = FALSE)
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+
+### Or this way for a permanent online table:
+#install.packages('rsconnect')
+rsconnect::setAccountInfo(name='immccull95', token='376D279BDA623BD76B0FAFC1B9794EF4',
+                          secret='CeXnvPJ+pq05nGLKUXNraO2vRd5+MBUO2q4GVvHv')
+library(rsconnect)
+rsconnect::deployApp("C:/Users/immccull/Documents/Amazon/Rcode/CorridorLookupTable",
+                     appName='AmazonCorridorLookupTable')
