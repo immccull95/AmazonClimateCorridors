@@ -300,3 +300,10 @@ plot(amazon_study_area, add=T)
 plot(x, add=T)
 plot(end_pts, add=T, col='dodgerblue', pch=20)
 #plot(start_pts, add=T, col='gray80', pch=20)
+
+
+## Calculate LCP density (per 5 sq km) (1 km ran out of memory)
+conductance_crop <- terra::crop(conductance, amazon_study_area, mask=T)
+#conductance_crop_1km <- terra::aggregate(conductance_crop, fact=2, fun='mean', na.rm=T) #fun doesn't matter; only care about res
+conductance_crop_5km <- terra::aggregate(conductance_crop, fact=10, fun='mean', na.rm=T)
+lcps_dens <- create_lcp_density(conductance_crop_5km, lcps = x)

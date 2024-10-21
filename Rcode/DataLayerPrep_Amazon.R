@@ -1,6 +1,6 @@
 ### Assembling data layers for Amazon climate corridor 
 # Date: 5-30-24
-# updated: 6-3-24 (add Los Amigos)
+# updated: 9-25-24: increase minimum PA size to 10km2
 
 #### R libraries ####
 library(terra)
@@ -57,130 +57,162 @@ nacional_5km <- subset(nacional, nacional$areasqkm >= 5)
 reserva_florestal_5km <- subset(reserva_florestal, reserva_florestal$areasqkm >= 5)
 indigenous_territories_5km <- subset(indigenous_territories, indigenous_territories$areasqkm >= 5)
 
+# update: increase minimum threshold to 10km2
+bosque_protector_10km <- subset(bosque_protector, bosque_protector$areasqkm >= 10)
+departamental_10km <- subset(departamental, departamental$areasqkm >= 10)
+nacional_10km <- subset(nacional, nacional$areasqkm >= 10)
+reserva_florestal_10km <- subset(reserva_florestal, reserva_florestal$areasqkm >= 10)
+indigenous_territories_10km <- subset(indigenous_territories, indigenous_territories$areasqkm >= 10)
+
+
 # calculate elevation stats for remaining polygons >= 5km2
 # Note: bosque protector has LosAmigos
-bosque_protector_5km_elev_mean <- terra::extract(DEM, bosque_protector_5km, fun="mean", na.rm=T)
-bosque_protector_5km_elev_median <- terra::extract(DEM, bosque_protector_5km, fun="median", na.rm=T)
-bosque_protector_5km_elev_min <- terra::extract(DEM, bosque_protector_5km, fun="min", na.rm=T)
-bosque_protector_5km_elev_max <- terra::extract(DEM, bosque_protector_5km, fun="max", na.rm=T)
+# bosque_protector_5km_elev_mean <- terra::extract(DEM, bosque_protector_5km, fun="mean", na.rm=T)
+# bosque_protector_5km_elev_median <- terra::extract(DEM, bosque_protector_5km, fun="median", na.rm=T)
+# bosque_protector_5km_elev_min <- terra::extract(DEM, bosque_protector_5km, fun="min", na.rm=T)
+# bosque_protector_5km_elev_max <- terra::extract(DEM, bosque_protector_5km, fun="max", na.rm=T)
+# 
+# bosque_protector_5km_elev <- cbind.data.frame(bosque_protector_5km_elev_min, bosque_protector_5km_elev_median, bosque_protector_5km_elev_max, bosque_protector_5km_elev_mean)
+# bosque_protector_5km_elev <- bosque_protector_5km_elev[,c(1,2,4,6,8)]
+# names(bosque_protector_5km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
+# bosque_protector_5km_elev$rowID <- seq(1, nrow(bosque_protector_5km_elev), 1)
+# bosque_protector_5km$rowID <- seq(1, nrow(bosque_protector_5km), 1)
+# bosque_protector_5km_elev <- merge(bosque_protector_5km, bosque_protector_5km_elev, by='rowID')
+# bosque_protector_5km_elev$ElevZone <- ifelse(bosque_protector_5km_elev$mean_m <= 500, "Lowland", NA)
+# bosque_protector_5km_elev$ElevZone <- ifelse(bosque_protector_5km_elev$mean_m >= 1500, "Highland", bosque_protector_5km_elev$ElevZone)
+# bosque_protector_5km_elev_df <- as.data.frame(bosque_protector_5km_elev)
+# table(bosque_protector_5km_elev_df$ElevZone)
+# #write.csv(bosque_protector_5km_elev_df, file="RAISG/Anps2023-1/Anps/bosque_protector_5km_wElev.csv", row.names=F)
+# #writeVector(bosque_protector_5km_elev, "RAISG/Anps2023-1/Anps/bosque_protector_5km_wElev.shp", overwrite=T)
+# 
+# departamental_5km_elev_mean <- terra::extract(DEM, departamental_5km, fun="mean", na.rm=T)
+# departamental_5km_elev_median <- terra::extract(DEM, departamental_5km, fun="median", na.rm=T)
+# departamental_5km_elev_min <- terra::extract(DEM, departamental_5km, fun="min", na.rm=T)
+# departamental_5km_elev_max <- terra::extract(DEM, departamental_5km, fun="max", na.rm=T)
+# 
+# departamental_5km_elev <- cbind.data.frame(departamental_5km_elev_min, departamental_5km_elev_median, departamental_5km_elev_max, departamental_5km_elev_mean)
+# departamental_5km_elev <- departamental_5km_elev[,c(1,2,4,6,8)]
+# names(departamental_5km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
+# departamental_5km_elev$rowID <- seq(1, nrow(departamental_5km_elev), 1)
+# departamental_5km$rowID <- seq(1, nrow(departamental_5km), 1)
+# departamental_5km_elev <- merge(departamental_5km, departamental_5km_elev, by='rowID')
+# departamental_5km_elev$ElevZone <- ifelse(departamental_5km_elev$mean_m <= 500, "Lowland", NA)
+# departamental_5km_elev$ElevZone <- ifelse(departamental_5km_elev$mean_m >= 1500, "Highland", departamental_5km_elev$ElevZone)
+# departamental_5km_elev_df <- as.data.frame(departamental_5km_elev)
+# table(departamental_5km_elev_df$ElevZone)
+# #write.csv(departamental_5km_elev_df, file="RAISG/Anps2023-1/Anps/departamental_5km_wElev.csv", row.names=F)
+# #writeVector(departamental_5km_elev, "RAISG/Anps2023-1/Anps/departamental_5km_wElev.shp", overwrite=T)
+# 
+# nacional_5km_elev_mean <- terra::extract(DEM, nacional_5km, fun="mean", na.rm=T)
+# nacional_5km_elev_median <- terra::extract(DEM, nacional_5km, fun="median", na.rm=T)
+# nacional_5km_elev_min <- terra::extract(DEM, nacional_5km, fun="min", na.rm=T)
+# nacional_5km_elev_max <- terra::extract(DEM, nacional_5km, fun="max", na.rm=T)
+# 
+# nacional_5km_elev <- cbind.data.frame(nacional_5km_elev_min, nacional_5km_elev_median, nacional_5km_elev_max, nacional_5km_elev_mean)
+# nacional_5km_elev <- nacional_5km_elev[,c(1,2,4,6,8)]
+# names(nacional_5km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
+# nacional_5km_elev$rowID <- seq(1, nrow(nacional_5km_elev), 1)
+# nacional_5km$rowID <- seq(1, nrow(nacional_5km), 1)
+# nacional_5km_elev <- merge(nacional_5km, nacional_5km_elev, by='rowID')
+# nacional_5km_elev$ElevZone <- ifelse(nacional_5km_elev$mean_m <= 500, "Lowland", NA)
+# nacional_5km_elev$ElevZone <- ifelse(nacional_5km_elev$mean_m >= 1500, "Highland", nacional_5km_elev$ElevZone)
+# nacional_5km_elev_df <- as.data.frame(nacional_5km_elev)
+# table(nacional_5km_elev_df$ElevZone)
+# #write.csv(nacional_5km_elev_df, file="RAISG/Anps2023-1/Anps/nacional_5km_wElev.csv", row.names=F)
+# #writeVector(nacional_5km_elev, "RAISG/Anps2023-1/Anps/nacional_5km_wElev.shp", overwrite=T)
+# 
+# reserva_florestal_5km_elev_mean <- terra::extract(DEM, reserva_florestal_5km, fun="mean", na.rm=T)
+# reserva_florestal_5km_elev_median <- terra::extract(DEM, reserva_florestal_5km, fun="median", na.rm=T)
+# reserva_florestal_5km_elev_min <- terra::extract(DEM, reserva_florestal_5km, fun="min", na.rm=T)
+# reserva_florestal_5km_elev_max <- terra::extract(DEM, reserva_florestal_5km, fun="max", na.rm=T)
+# 
+# reserva_florestal_5km_elev <- cbind.data.frame(reserva_florestal_5km_elev_min, reserva_florestal_5km_elev_median, reserva_florestal_5km_elev_max, reserva_florestal_5km_elev_mean)
+# reserva_florestal_5km_elev <- reserva_florestal_5km_elev[,c(1,2,4,6,8)]
+# names(reserva_florestal_5km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
+# reserva_florestal_5km_elev$rowID <- seq(1, nrow(reserva_florestal_5km_elev), 1)
+# reserva_florestal_5km$rowID <- seq(1, nrow(reserva_florestal_5km), 1)
+# reserva_florestal_5km_elev <- merge(reserva_florestal_5km, reserva_florestal_5km_elev, by='rowID')
+# reserva_florestal_5km_elev$ElevZone <- ifelse(reserva_florestal_5km_elev$mean_m <= 500, "Lowland", NA)
+# reserva_florestal_5km_elev$ElevZone <- ifelse(reserva_florestal_5km_elev$mean_m >= 1500, "Highland", reserva_florestal_5km_elev$ElevZone)
+# reserva_florestal_5km_elev_df <- as.data.frame(reserva_florestal_5km_elev)
+# table(reserva_florestal_5km_elev_df$ElevZone)
+# #write.csv(reserva_florestal_5km_elev_df, file="RAISG/Anps2023-1/Anps/reserva_florestal_5km_wElev.csv", row.names=F)
+# #writeVector(reserva_florestal_5km_elev, "RAISG/Anps2023-1/Anps/reserva_florestal_5km_wElev.shp", overwrite=T)
+# 
+# indigenous_territories_5km_elev_mean <- terra::extract(DEM, indigenous_territories_5km, fun="mean", na.rm=T)
+# indigenous_territories_5km_elev_median <- terra::extract(DEM, indigenous_territories_5km, fun="median", na.rm=T)
+# indigenous_territories_5km_elev_min <- terra::extract(DEM, indigenous_territories_5km, fun="min", na.rm=T)
+# indigenous_territories_5km_elev_max <- terra::extract(DEM, indigenous_territories_5km, fun="max", na.rm=T)
+# 
+# indigenous_territories_5km_elev <- cbind.data.frame(indigenous_territories_5km_elev_min, indigenous_territories_5km_elev_median, indigenous_territories_5km_elev_max, indigenous_territories_5km_elev_mean)
+# indigenous_territories_5km_elev <- indigenous_territories_5km_elev[,c(1,2,4,6,8)]
+# names(indigenous_territories_5km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
+# indigenous_territories_5km_elev$rowID <- seq(1, nrow(indigenous_territories_5km_elev), 1)
+# indigenous_territories_5km$rowID <- seq(1, nrow(indigenous_territories_5km), 1)
+# indigenous_territories_5km_elev <- merge(indigenous_territories_5km, indigenous_territories_5km_elev, by='rowID')
+# indigenous_territories_5km_elev$ElevZone <- ifelse(indigenous_territories_5km_elev$mean_m <= 500, "Lowland", NA)
+# indigenous_territories_5km_elev$ElevZone <- ifelse(indigenous_territories_5km_elev$mean_m >= 1500, "Highland", indigenous_territories_5km_elev$ElevZone)
+# indigenous_territories_5km_elev_df <- as.data.frame(indigenous_territories_5km_elev)
+# table(indigenous_territories_5km_elev_df$ElevZone)
+# #write.csv(indigenous_territories_5km_elev_df, file="RAISG/Anps2023-1/Anps/indigenous_territories_5km_wElev.csv", row.names=F)
+# #writeVector(indigenous_territories_5km_elev, "RAISG/Anps2023-1/Anps/indigenous_territories_5km_wElev.shp", overwrite=T)
+# 
+# #### Prepare nodes for connectivity analyses ####
+# bosque_protector_5km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/bosque_protector_5km_wElev.csv")
+# bosque_protector_5km_elev <- terra::vect("RAISG/Anps2023-1/Anps/bosque_protector_5km_wElev.shp")
+# 
+# indigenous_territories_5km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/indigenous_territories_5km_wElev.csv")
+# indigenous_territories_5km_elev <- terra::vect("RAISG/Anps2023-1/Anps/indigenous_territories_5km_wElev.shp")
+# 
+# reserva_florestal_5km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/reserva_florestal_5km_wElev.csv")
+# reserva_florestal_5km_elev <- terra::vect("RAISG/Anps2023-1/Anps/reserva_florestal_5km_wElev.shp")
+# 
+# departamental_5km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/departamental_5km_wElev.csv")
+# departamental_5km_elev <- terra::vect("RAISG/Anps2023-1/Anps/departamental_5km_wElev.shp")
+# 
+# nacional_5km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/nacional_5km_wElev.csv")
+# nacional_5km_elev <- terra::vect("RAISG/Anps2023-1/Anps/nacional_5km_wElev.shp")
+# 
+# colnames_keep <- c('pais','nombre','categoria','categoriaa',
+#                    'areasqkm','min_m','median_m','max_m','mean_m','ElevZone')
+# 
+# all_nodes_df <- rbind.data.frame(bosque_protector_5km_elev_df[,colnames_keep],
+#                                  nacional_5km_elev_df[,colnames_keep],
+#                                  departamental_5km_elev_df[,colnames_keep],
+#                                  reserva_florestal_5km_elev_df[,colnames_keep],
+#                                  indigenous_territories_5km_elev_df[,colnames_keep])
+# all_nodes_shp <- rbind(bosque_protector_5km_elev[,colnames_keep],
+#                        nacional_5km_elev[,colnames_keep],
+#                        departamental_5km_elev[,colnames_keep],
+#                        reserva_florestal_5km_elev[,colnames_keep],
+#                        indigenous_territories_5km_elev[,colnames_keep])
+# 
+# end_nodes_shp <- subset(all_nodes_shp, all_nodes_shp$ElevZone=='Highland')
+# start_nodes_shp <- subset(all_nodes_shp, all_nodes_shp$ElevZone=='Lowland')
 
-bosque_protector_5km_elev <- cbind.data.frame(bosque_protector_5km_elev_min, bosque_protector_5km_elev_median, bosque_protector_5km_elev_max, bosque_protector_5km_elev_mean)
-bosque_protector_5km_elev <- bosque_protector_5km_elev[,c(1,2,4,6,8)]
-names(bosque_protector_5km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
-bosque_protector_5km_elev$rowID <- seq(1, nrow(bosque_protector_5km_elev), 1)
-bosque_protector_5km$rowID <- seq(1, nrow(bosque_protector_5km), 1)
-bosque_protector_5km_elev <- merge(bosque_protector_5km, bosque_protector_5km_elev, by='rowID')
-bosque_protector_5km_elev$ElevZone <- ifelse(bosque_protector_5km_elev$mean_m <= 500, "Lowland", NA)
-bosque_protector_5km_elev$ElevZone <- ifelse(bosque_protector_5km_elev$mean_m >= 1500, "Highland", bosque_protector_5km_elev$ElevZone)
-bosque_protector_5km_elev_df <- as.data.frame(bosque_protector_5km_elev)
-table(bosque_protector_5km_elev_df$ElevZone)
-#write.csv(bosque_protector_5km_elev_df, file="RAISG/Anps2023-1/Anps/bosque_protector_5km_wElev.csv", row.names=F)
-#writeVector(bosque_protector_5km_elev, "RAISG/Anps2023-1/Anps/bosque_protector_5km_wElev.shp", overwrite=T)
+## Update July 2024: experiment with reducing number of end nodes
+#end_nodes_shp_dissolved <- terra::aggregate(end_nodes_shp) # use Q; much faster
 
-departamental_5km_elev_mean <- terra::extract(DEM, departamental_5km, fun="mean", na.rm=T)
-departamental_5km_elev_median <- terra::extract(DEM, departamental_5km, fun="median", na.rm=T)
-departamental_5km_elev_min <- terra::extract(DEM, departamental_5km, fun="min", na.rm=T)
-departamental_5km_elev_max <- terra::extract(DEM, departamental_5km, fun="max", na.rm=T)
+# end_nodes_dissolved_5km <- terra::vect("end_nodes/tump/end_nodes_dissolved_5km.shp")
+# end_nodes_dissolved_5km_area <- terra::expanse(end_nodes_dissolved_5km, "km")
+# summary(end_nodes_dissolved_5km_area)
+# hist(end_nodes_dissolved_5km_area)
+# 
+# end_nodes_dissolved_5km_df <- as.data.frame(end_nodes_dissolved_5km)
+# end_nodes_dissolved_5km_df$dissolved_areasqkm <- terra::expanse(end_nodes_dissolved_5km, "km")
+# nrow(subset(end_nodes_dissolved_5km_df, dissolved_areasqkm < 10))
+# 
+# # play around with size of end nodes without dissolving
+# end_nodes_shp_df <- as.data.frame(end_nodes_shp)
+# summary(end_nodes_shp_df$areasqkm)
+# nrow(subset(end_nodes_shp_df, areasqkm < 50)) #tried 10, 25, 50 km2
+# 
+# # play around with size of start nodes
+# start_nodes_shp_df <- as.data.frame(start_nodes_shp)
+# summary(start_nodes_shp_df$areasqkm)
+# nrow(subset(start_nodes_shp_df, areasqkm < 50)) #tried 10, 25, 50 km2
 
-departamental_5km_elev <- cbind.data.frame(departamental_5km_elev_min, departamental_5km_elev_median, departamental_5km_elev_max, departamental_5km_elev_mean)
-departamental_5km_elev <- departamental_5km_elev[,c(1,2,4,6,8)]
-names(departamental_5km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
-departamental_5km_elev$rowID <- seq(1, nrow(departamental_5km_elev), 1)
-departamental_5km$rowID <- seq(1, nrow(departamental_5km), 1)
-departamental_5km_elev <- merge(departamental_5km, departamental_5km_elev, by='rowID')
-departamental_5km_elev$ElevZone <- ifelse(departamental_5km_elev$mean_m <= 500, "Lowland", NA)
-departamental_5km_elev$ElevZone <- ifelse(departamental_5km_elev$mean_m >= 1500, "Highland", departamental_5km_elev$ElevZone)
-departamental_5km_elev_df <- as.data.frame(departamental_5km_elev)
-table(departamental_5km_elev_df$ElevZone)
-#write.csv(departamental_5km_elev_df, file="RAISG/Anps2023-1/Anps/departamental_5km_wElev.csv", row.names=F)
-#writeVector(departamental_5km_elev, "RAISG/Anps2023-1/Anps/departamental_5km_wElev.shp", overwrite=T)
 
-nacional_5km_elev_mean <- terra::extract(DEM, nacional_5km, fun="mean", na.rm=T)
-nacional_5km_elev_median <- terra::extract(DEM, nacional_5km, fun="median", na.rm=T)
-nacional_5km_elev_min <- terra::extract(DEM, nacional_5km, fun="min", na.rm=T)
-nacional_5km_elev_max <- terra::extract(DEM, nacional_5km, fun="max", na.rm=T)
-
-nacional_5km_elev <- cbind.data.frame(nacional_5km_elev_min, nacional_5km_elev_median, nacional_5km_elev_max, nacional_5km_elev_mean)
-nacional_5km_elev <- nacional_5km_elev[,c(1,2,4,6,8)]
-names(nacional_5km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
-nacional_5km_elev$rowID <- seq(1, nrow(nacional_5km_elev), 1)
-nacional_5km$rowID <- seq(1, nrow(nacional_5km), 1)
-nacional_5km_elev <- merge(nacional_5km, nacional_5km_elev, by='rowID')
-nacional_5km_elev$ElevZone <- ifelse(nacional_5km_elev$mean_m <= 500, "Lowland", NA)
-nacional_5km_elev$ElevZone <- ifelse(nacional_5km_elev$mean_m >= 1500, "Highland", nacional_5km_elev$ElevZone)
-nacional_5km_elev_df <- as.data.frame(nacional_5km_elev)
-table(nacional_5km_elev_df$ElevZone)
-#write.csv(nacional_5km_elev_df, file="RAISG/Anps2023-1/Anps/nacional_5km_wElev.csv", row.names=F)
-#writeVector(nacional_5km_elev, "RAISG/Anps2023-1/Anps/nacional_5km_wElev.shp", overwrite=T)
-
-reserva_florestal_5km_elev_mean <- terra::extract(DEM, reserva_florestal_5km, fun="mean", na.rm=T)
-reserva_florestal_5km_elev_median <- terra::extract(DEM, reserva_florestal_5km, fun="median", na.rm=T)
-reserva_florestal_5km_elev_min <- terra::extract(DEM, reserva_florestal_5km, fun="min", na.rm=T)
-reserva_florestal_5km_elev_max <- terra::extract(DEM, reserva_florestal_5km, fun="max", na.rm=T)
-
-reserva_florestal_5km_elev <- cbind.data.frame(reserva_florestal_5km_elev_min, reserva_florestal_5km_elev_median, reserva_florestal_5km_elev_max, reserva_florestal_5km_elev_mean)
-reserva_florestal_5km_elev <- reserva_florestal_5km_elev[,c(1,2,4,6,8)]
-names(reserva_florestal_5km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
-reserva_florestal_5km_elev$rowID <- seq(1, nrow(reserva_florestal_5km_elev), 1)
-reserva_florestal_5km$rowID <- seq(1, nrow(reserva_florestal_5km), 1)
-reserva_florestal_5km_elev <- merge(reserva_florestal_5km, reserva_florestal_5km_elev, by='rowID')
-reserva_florestal_5km_elev$ElevZone <- ifelse(reserva_florestal_5km_elev$mean_m <= 500, "Lowland", NA)
-reserva_florestal_5km_elev$ElevZone <- ifelse(reserva_florestal_5km_elev$mean_m >= 1500, "Highland", reserva_florestal_5km_elev$ElevZone)
-reserva_florestal_5km_elev_df <- as.data.frame(reserva_florestal_5km_elev)
-table(reserva_florestal_5km_elev_df$ElevZone)
-#write.csv(reserva_florestal_5km_elev_df, file="RAISG/Anps2023-1/Anps/reserva_florestal_5km_wElev.csv", row.names=F)
-#writeVector(reserva_florestal_5km_elev, "RAISG/Anps2023-1/Anps/reserva_florestal_5km_wElev.shp", overwrite=T)
-
-indigenous_territories_5km_elev_mean <- terra::extract(DEM, indigenous_territories_5km, fun="mean", na.rm=T)
-indigenous_territories_5km_elev_median <- terra::extract(DEM, indigenous_territories_5km, fun="median", na.rm=T)
-indigenous_territories_5km_elev_min <- terra::extract(DEM, indigenous_territories_5km, fun="min", na.rm=T)
-indigenous_territories_5km_elev_max <- terra::extract(DEM, indigenous_territories_5km, fun="max", na.rm=T)
-
-indigenous_territories_5km_elev <- cbind.data.frame(indigenous_territories_5km_elev_min, indigenous_territories_5km_elev_median, indigenous_territories_5km_elev_max, indigenous_territories_5km_elev_mean)
-indigenous_territories_5km_elev <- indigenous_territories_5km_elev[,c(1,2,4,6,8)]
-names(indigenous_territories_5km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
-indigenous_territories_5km_elev$rowID <- seq(1, nrow(indigenous_territories_5km_elev), 1)
-indigenous_territories_5km$rowID <- seq(1, nrow(indigenous_territories_5km), 1)
-indigenous_territories_5km_elev <- merge(indigenous_territories_5km, indigenous_territories_5km_elev, by='rowID')
-indigenous_territories_5km_elev$ElevZone <- ifelse(indigenous_territories_5km_elev$mean_m <= 500, "Lowland", NA)
-indigenous_territories_5km_elev$ElevZone <- ifelse(indigenous_territories_5km_elev$mean_m >= 1500, "Highland", indigenous_territories_5km_elev$ElevZone)
-indigenous_territories_5km_elev_df <- as.data.frame(indigenous_territories_5km_elev)
-table(indigenous_territories_5km_elev_df$ElevZone)
-#write.csv(indigenous_territories_5km_elev_df, file="RAISG/Anps2023-1/Anps/indigenous_territories_5km_wElev.csv", row.names=F)
-#writeVector(indigenous_territories_5km_elev, "RAISG/Anps2023-1/Anps/indigenous_territories_5km_wElev.shp", overwrite=T)
-
-#### Prepare nodes for connectivity analyses ####
-bosque_protector_5km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/bosque_protector_5km_wElev.csv")
-bosque_protector_5km_elev <- terra::vect("RAISG/Anps2023-1/Anps/bosque_protector_5km_wElev.shp")
-
-indigenous_territories_5km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/indigenous_territories_5km_wElev.csv")
-indigenous_territories_5km_elev <- terra::vect("RAISG/Anps2023-1/Anps/indigenous_territories_5km_wElev.shp")
-
-reserva_florestal_5km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/reserva_florestal_5km_wElev.csv")
-reserva_florestal_5km_elev <- terra::vect("RAISG/Anps2023-1/Anps/reserva_florestal_5km_wElev.shp")
-
-departamental_5km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/departamental_5km_wElev.csv")
-departamental_5km_elev <- terra::vect("RAISG/Anps2023-1/Anps/departamental_5km_wElev.shp")
-
-nacional_5km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/nacional_5km_wElev.csv")
-nacional_5km_elev <- terra::vect("RAISG/Anps2023-1/Anps/nacional_5km_wElev.shp")
-
-colnames_keep <- c('pais','nombre','categoria','categoriaa',
-                   'areasqkm','min_m','median_m','max_m','mean_m','ElevZone')
-
-all_nodes_df <- rbind.data.frame(bosque_protector_5km_elev_df[,colnames_keep],
-                                 nacional_5km_elev_df[,colnames_keep],
-                                 departamental_5km_elev_df[,colnames_keep],
-                                 reserva_florestal_5km_elev_df[,colnames_keep],
-                                 indigenous_territories_5km_elev_df[,colnames_keep])
-all_nodes_shp <- rbind(bosque_protector_5km_elev[,colnames_keep],
-                       nacional_5km_elev[,colnames_keep],
-                       departamental_5km_elev[,colnames_keep],
-                       reserva_florestal_5km_elev[,colnames_keep],
-                       indigenous_territories_5km_elev[,colnames_keep])
-
-end_nodes_shp <- subset(all_nodes_shp, all_nodes_shp$ElevZone=='Highland')
-start_nodes_shp <- subset(all_nodes_shp, all_nodes_shp$ElevZone=='Lowland')
 #writeVector(end_nodes_shp, filename='end_nodes/end_nodes_amazon_polygons.shp', overwrite=T)
 #writeVector(start_nodes_shp, filename='start_nodes/start_nodes_amazon_polygons.shp', overwrite=T)
 
@@ -188,3 +220,137 @@ end_nodes_shp_pts <- terra::centroids(end_nodes_shp, inside=T)
 start_nodes_shp_pts <- terra::centroids(start_nodes_shp, inside=T)
 #writeVector(end_nodes_shp_pts, filename='end_nodes/end_nodes_amazon_points.shp', overwrite=T)
 #writeVector(start_nodes_shp_pts, filename='start_nodes/start_nodes_amazon_points.shp', overwrite=T)
+
+# Update: Sep 2024: increase minimum PA size to 10m
+# calculate elevation stats for remaining polygons >= 10km2
+# Note: bosque protector has LosAmigos
+bosque_protector_10km_elev_mean <- terra::extract(DEM, bosque_protector_10km, fun="mean", na.rm=T)
+bosque_protector_10km_elev_median <- terra::extract(DEM, bosque_protector_10km, fun="median", na.rm=T)
+bosque_protector_10km_elev_min <- terra::extract(DEM, bosque_protector_10km, fun="min", na.rm=T)
+bosque_protector_10km_elev_max <- terra::extract(DEM, bosque_protector_10km, fun="max", na.rm=T)
+
+bosque_protector_10km_elev <- cbind.data.frame(bosque_protector_10km_elev_min, bosque_protector_10km_elev_median, bosque_protector_10km_elev_max, bosque_protector_10km_elev_mean)
+bosque_protector_10km_elev <- bosque_protector_10km_elev[,c(1,2,4,6,8)]
+names(bosque_protector_10km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
+bosque_protector_10km_elev$rowID <- seq(1, nrow(bosque_protector_10km_elev), 1)
+bosque_protector_10km$rowID <- seq(1, nrow(bosque_protector_10km), 1)
+bosque_protector_10km_elev <- merge(bosque_protector_10km, bosque_protector_10km_elev, by='rowID')
+bosque_protector_10km_elev$ElevZone <- ifelse(bosque_protector_10km_elev$mean_m <= 500, "Lowland", NA)
+bosque_protector_10km_elev$ElevZone <- ifelse(bosque_protector_10km_elev$mean_m >= 1500, "Highland", bosque_protector_10km_elev$ElevZone)
+bosque_protector_10km_elev_df <- as.data.frame(bosque_protector_10km_elev)
+table(bosque_protector_10km_elev_df$ElevZone)
+#write.csv(bosque_protector_10km_elev_df, file="RAISG/Anps2023-1/Anps/bosque_protector_10km_wElev.csv", row.names=F)
+#writeVector(bosque_protector_10km_elev, "RAISG/Anps2023-1/Anps/bosque_protector_10km_wElev.shp", overwrite=T)
+
+departamental_10km_elev_mean <- terra::extract(DEM, departamental_10km, fun="mean", na.rm=T)
+departamental_10km_elev_median <- terra::extract(DEM, departamental_10km, fun="median", na.rm=T)
+departamental_10km_elev_min <- terra::extract(DEM, departamental_10km, fun="min", na.rm=T)
+departamental_10km_elev_max <- terra::extract(DEM, departamental_10km, fun="max", na.rm=T)
+
+departamental_10km_elev <- cbind.data.frame(departamental_10km_elev_min, departamental_10km_elev_median, departamental_10km_elev_max, departamental_10km_elev_mean)
+departamental_10km_elev <- departamental_10km_elev[,c(1,2,4,6,8)]
+names(departamental_10km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
+departamental_10km_elev$rowID <- seq(1, nrow(departamental_10km_elev), 1)
+departamental_10km$rowID <- seq(1, nrow(departamental_10km), 1)
+departamental_10km_elev <- merge(departamental_10km, departamental_10km_elev, by='rowID')
+departamental_10km_elev$ElevZone <- ifelse(departamental_10km_elev$mean_m <= 500, "Lowland", NA)
+departamental_10km_elev$ElevZone <- ifelse(departamental_10km_elev$mean_m >= 1500, "Highland", departamental_10km_elev$ElevZone)
+departamental_10km_elev_df <- as.data.frame(departamental_10km_elev)
+table(departamental_10km_elev_df$ElevZone)
+#write.csv(departamental_10km_elev_df, file="RAISG/Anps2023-1/Anps/departamental_10km_wElev.csv", row.names=F)
+#writeVector(departamental_10km_elev, "RAISG/Anps2023-1/Anps/departamental_10km_wElev.shp", overwrite=T)
+
+nacional_10km_elev_mean <- terra::extract(DEM, nacional_10km, fun="mean", na.rm=T)
+nacional_10km_elev_median <- terra::extract(DEM, nacional_10km, fun="median", na.rm=T)
+nacional_10km_elev_min <- terra::extract(DEM, nacional_10km, fun="min", na.rm=T)
+nacional_10km_elev_max <- terra::extract(DEM, nacional_10km, fun="max", na.rm=T)
+
+nacional_10km_elev <- cbind.data.frame(nacional_10km_elev_min, nacional_10km_elev_median, nacional_10km_elev_max, nacional_10km_elev_mean)
+nacional_10km_elev <- nacional_10km_elev[,c(1,2,4,6,8)]
+names(nacional_10km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
+nacional_10km_elev$rowID <- seq(1, nrow(nacional_10km_elev), 1)
+nacional_10km$rowID <- seq(1, nrow(nacional_10km), 1)
+nacional_10km_elev <- merge(nacional_10km, nacional_10km_elev, by='rowID')
+nacional_10km_elev$ElevZone <- ifelse(nacional_10km_elev$mean_m <= 500, "Lowland", NA)
+nacional_10km_elev$ElevZone <- ifelse(nacional_10km_elev$mean_m >= 1500, "Highland", nacional_10km_elev$ElevZone)
+nacional_10km_elev_df <- as.data.frame(nacional_10km_elev)
+table(nacional_10km_elev_df$ElevZone)
+#write.csv(nacional_10km_elev_df, file="RAISG/Anps2023-1/Anps/nacional_10km_wElev.csv", row.names=F)
+#writeVector(nacional_10km_elev, "RAISG/Anps2023-1/Anps/nacional_10km_wElev.shp", overwrite=T)
+
+reserva_florestal_10km_elev_mean <- terra::extract(DEM, reserva_florestal_10km, fun="mean", na.rm=T)
+reserva_florestal_10km_elev_median <- terra::extract(DEM, reserva_florestal_10km, fun="median", na.rm=T)
+reserva_florestal_10km_elev_min <- terra::extract(DEM, reserva_florestal_10km, fun="min", na.rm=T)
+reserva_florestal_10km_elev_max <- terra::extract(DEM, reserva_florestal_10km, fun="max", na.rm=T)
+
+reserva_florestal_10km_elev <- cbind.data.frame(reserva_florestal_10km_elev_min, reserva_florestal_10km_elev_median, reserva_florestal_10km_elev_max, reserva_florestal_10km_elev_mean)
+reserva_florestal_10km_elev <- reserva_florestal_10km_elev[,c(1,2,4,6,8)]
+names(reserva_florestal_10km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
+reserva_florestal_10km_elev$rowID <- seq(1, nrow(reserva_florestal_10km_elev), 1)
+reserva_florestal_10km$rowID <- seq(1, nrow(reserva_florestal_10km), 1)
+reserva_florestal_10km_elev <- merge(reserva_florestal_10km, reserva_florestal_10km_elev, by='rowID')
+reserva_florestal_10km_elev$ElevZone <- ifelse(reserva_florestal_10km_elev$mean_m <= 500, "Lowland", NA)
+reserva_florestal_10km_elev$ElevZone <- ifelse(reserva_florestal_10km_elev$mean_m >= 1500, "Highland", reserva_florestal_10km_elev$ElevZone)
+reserva_florestal_10km_elev_df <- as.data.frame(reserva_florestal_10km_elev)
+table(reserva_florestal_10km_elev_df$ElevZone)
+#write.csv(reserva_florestal_10km_elev_df, file="RAISG/Anps2023-1/Anps/reserva_florestal_10km_wElev.csv", row.names=F)
+#writeVector(reserva_florestal_10km_elev, "RAISG/Anps2023-1/Anps/reserva_florestal_10km_wElev.shp", overwrite=T)
+
+indigenous_territories_10km_elev_mean <- terra::extract(DEM, indigenous_territories_10km, fun="mean", na.rm=T)
+indigenous_territories_10km_elev_median <- terra::extract(DEM, indigenous_territories_10km, fun="median", na.rm=T)
+indigenous_territories_10km_elev_min <- terra::extract(DEM, indigenous_territories_10km, fun="min", na.rm=T)
+indigenous_territories_10km_elev_max <- terra::extract(DEM, indigenous_territories_10km, fun="max", na.rm=T)
+
+indigenous_territories_10km_elev <- cbind.data.frame(indigenous_territories_10km_elev_min, indigenous_territories_10km_elev_median, indigenous_territories_10km_elev_max, indigenous_territories_10km_elev_mean)
+indigenous_territories_10km_elev <- indigenous_territories_10km_elev[,c(1,2,4,6,8)]
+names(indigenous_territories_10km_elev) <- c('rowID','min_m', 'median_m','max_m','mean_m')
+indigenous_territories_10km_elev$rowID <- seq(1, nrow(indigenous_territories_10km_elev), 1)
+indigenous_territories_10km$rowID <- seq(1, nrow(indigenous_territories_10km), 1)
+indigenous_territories_10km_elev <- merge(indigenous_territories_10km, indigenous_territories_10km_elev, by='rowID')
+indigenous_territories_10km_elev$ElevZone <- ifelse(indigenous_territories_10km_elev$mean_m <= 500, "Lowland", NA)
+indigenous_territories_10km_elev$ElevZone <- ifelse(indigenous_territories_10km_elev$mean_m >= 1500, "Highland", indigenous_territories_10km_elev$ElevZone)
+indigenous_territories_10km_elev_df <- as.data.frame(indigenous_territories_10km_elev)
+table(indigenous_territories_10km_elev_df$ElevZone)
+#write.csv(indigenous_territories_10km_elev_df, file="RAISG/Anps2023-1/Anps/indigenous_territories_10km_wElev.csv", row.names=F)
+#writeVector(indigenous_territories_10km_elev, "RAISG/Anps2023-1/Anps/indigenous_territories_10km_wElev.shp", overwrite=T)
+
+#### Prepare nodes for connectivity analyses ####
+bosque_protector_10km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/bosque_protector_10km_wElev.csv")
+bosque_protector_10km_elev <- terra::vect("RAISG/Anps2023-1/Anps/bosque_protector_10km_wElev.shp")
+
+indigenous_territories_10km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/indigenous_territories_10km_wElev.csv")
+indigenous_territories_10km_elev <- terra::vect("RAISG/Anps2023-1/Anps/indigenous_territories_10km_wElev.shp")
+
+reserva_florestal_10km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/reserva_florestal_10km_wElev.csv")
+reserva_florestal_10km_elev <- terra::vect("RAISG/Anps2023-1/Anps/reserva_florestal_10km_wElev.shp")
+
+departamental_10km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/departamental_10km_wElev.csv")
+departamental_10km_elev <- terra::vect("RAISG/Anps2023-1/Anps/departamental_10km_wElev.shp")
+
+nacional_10km_elev_df <- read.csv("RAISG/Anps2023-1/Anps/nacional_10km_wElev.csv")
+nacional_10km_elev <- terra::vect("RAISG/Anps2023-1/Anps/nacional_10km_wElev.shp")
+
+colnames_keep <- c('pais','nombre','categoria','categoriaa',
+                   'areasqkm','min_m','median_m','max_m','mean_m','ElevZone')
+
+all_nodes_df <- rbind.data.frame(bosque_protector_10km_elev_df[,colnames_keep],
+                                 nacional_10km_elev_df[,colnames_keep],
+                                 departamental_10km_elev_df[,colnames_keep],
+                                 reserva_florestal_10km_elev_df[,colnames_keep],
+                                 indigenous_territories_10km_elev_df[,colnames_keep])
+all_nodes_shp <- rbind(bosque_protector_10km_elev[,colnames_keep],
+                       nacional_10km_elev[,colnames_keep],
+                       departamental_10km_elev[,colnames_keep],
+                       reserva_florestal_10km_elev[,colnames_keep],
+                       indigenous_territories_10km_elev[,colnames_keep])
+
+end_nodes_shp <- subset(all_nodes_shp, all_nodes_shp$ElevZone=='Highland')
+start_nodes_shp <- subset(all_nodes_shp, all_nodes_shp$ElevZone=='Lowland')
+
+#writeVector(end_nodes_shp, filename='end_nodes/end_nodes_amazon_polygons10km.shp', overwrite=T)
+#writeVector(start_nodes_shp, filename='start_nodes/start_nodes_amazon_polygons10km.shp', overwrite=T)
+
+end_nodes_shp_pts <- terra::centroids(end_nodes_shp, inside=T)
+start_nodes_shp_pts <- terra::centroids(start_nodes_shp, inside=T)
+#writeVector(end_nodes_shp_pts, filename='end_nodes/end_nodes_amazon_points10km.shp', overwrite=T)
+#writeVector(start_nodes_shp_pts, filename='start_nodes/start_nodes_amazon_points10km.shp', overwrite=T)
