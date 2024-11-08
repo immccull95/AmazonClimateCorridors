@@ -1,18 +1,24 @@
 ############### Preparing regional Amazon protected areas ########################
 # Date: 10-9-24
-# updated: 10-21-24
+# updated: 11-8-24: export dissolved 10km PA complexes
 # Author: Ian McCullough, immccull@gmail.com
 ###################################################################################
 
 #### R libraries ####
 library(terra)
+library(dplyr)
 library(tidyr)
 
 #### Input data ####
 setwd("C:/Users/immccull/Documents/AmazonClimateCorridors")
 
 # regions
-morrone2022_4674_amazon <- terra::vect("Regions/Morrone2022/Morrone2022_amazon_4674.shp")
+#morrone2022_4674_amazon <- terra::vect("Regions/Morrone2022/Morrone2022_amazon_4674.shp")
+south <- terra::vect("Regions/Morrone2022/south.shp")
+boreal <- terra::vect("Regions/Morrone2022/boreal.shp")
+chacoan <- terra::vect("Regions/Morrone2022/chacoan.shp")
+regions <- terra::vect(c(south, boreal, chacoan)) #equivalent of merge
+morrone2022_4674_amazon <- terra::project(regions, "EPSG:4674")
 
 # dissolved protected area complexes (done in QGIS
 # includes reserva florestal, indigenous, Los Amigos, nacional, departamental, bosque protector)
@@ -41,6 +47,7 @@ dissolved_PA_10km$PAcomplexID <- seq(1, nrow(dissolved_PA_10km), 1)
 
 plot(amazon_study_area)
 plot(dissolved_PA_10km, add=T, col='lightgreen')
+#terra::writeVector(dissolved_PA_10km, filename="protected_areas/Amazon_merged_PAs/Amazon_merged_PAs_dissolved10km.shp")
 
 ## calculate elevation stats for PA complexes
 # first have to reproject DEM and crop/mask to study area to make it more manageable
@@ -90,6 +97,7 @@ plot(dissolved_PA_10km, add=T, col='lightgreen')
 # sum(terra::expanse(region1_PA_complex, "km"))/sum(terra::expanse(region1_PA, "km"))
 
 # loop through regions to calculate % protection
+morrone2022_4674_amazon$regionID <- seq(1,nrow(morrone2022_4674_amazon),1)
 PA_df_list <- list()
 for (i in 1:nrow(morrone2022_4674_amazon)){
   region <- subset(morrone2022_4674_amazon, morrone2022_4674_amazon$regionID==i)
@@ -166,5 +174,55 @@ for (i in 1:nrow(morrone2022_4674_amazon)){
   region_PA_complex_elev_df$areasqkm <- terra::expanse(region_PA_complex, "km")
   region_PA_complex_elev_df$PAcomplexID <- region_PA_complex$PAcomplexID
   region_elev_list[[i]] <- region_PA_complex_elev_df
+  region_PA_complex_elev_df <- NULL
+  region <- NULL
+  region_PA_complex <- NULL
+  region_PA_complex_elev_mean <- NULL
+  region_PA_complex_elev_min <- NULL
+  region_PA_complex_elev_median <- NULL
+  region_PA_complex_elev_max <- NULL
 }
 test2 <- do.call(rbind.data.frame, region_elev_list)
+#write.csv(test2, file="protected_areas/Amazon_merged_PAs/PA_complex_elev_stats.csv", row.names=F)
+
+## Divvy up PA complexes by region for corridor mapping
+for (i in 1:nrow(morrone2022_4674_amazon)) {
+  region <- subset(morrone2022_4674_amazon, morrone2022_4674_amazon$regionID==i)
+  region_PA_complex <- terra::intersect(region, dissolved_PA_10km)
+  region_name <- region$Provincias
+  test2_sub <- subset(test2, region==region_name)
+  region_PA_complex <- merge(region_PA_complex[,c(1,3,4,6,12,61)], test2_sub[,c(2:12)], by='PAcomplexID')
+  region_PA_complex_pts <- terra::centroids(region_PA_complex)
+  polygon_name <- paste0("protected_areas/Amazon_merged_PAs/regional_PA_complexes/PA_complex_",region$Provincias,".shp")
+  point_name <-  paste0("protected_areas/Amazon_merged_PAs/regional_PA_complexes/PA_complex_",region$Provincias,"_pts.shp")
+  terra::writeVector(region_PA_complex, filename=polygon_name, overwrite=T)
+  terra::writeVector(region_PA_complex_pts, filename=point_name, overwrite=T)
+  
+  region <- NULL
+  region_PA_complex <- NULL
+  region_name <- NULL
+  test2_sub <- NULL
+  region_PA_complex_pts <- NULL
+  polygon_name <- NULL
+  point_name <- NULL
+}
+
+## Summarize elevation by macro region
+boreal_provinces <- boreal$Provincias
+south_provinces <- south$Provincias
+chacoan_provinces <- chacoan$Provincias
+
+macro_summary <- test2
+macro_summary$Macroregion <- ifelse(macro_summary$region %in% boreal_provinces, "boreal",NA)
+macro_summary$Macroregion <- ifelse(macro_summary$region %in% south_provinces, "south",macro_summary$Macroregion)
+macro_summary$Macroregion <- ifelse(macro_summary$region %in% chacoan_provinces, "chacoan",macro_summary$Macroregion)
+table(macro_summary$Macroregion)
+
+macro_summary2 <- macro_summary %>%
+  dplyr::group_by(Macroregion) %>%
+  dplyr::summarize(max_elev_m=max(max_elev_m, na.rm=T),
+                   min_elev_m=min(min_elev_m, na.rm=T),
+                   mean_elev_m=mean(mean_elev_m, na.rm=T),
+                   #median_elev_m=median(median_elev_m, na.rm=T),
+                   nPA_complexes=n()) %>%
+  as.data.frame()
