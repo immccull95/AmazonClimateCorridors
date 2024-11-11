@@ -66,16 +66,16 @@ boreal_dissolved <- terra::aggregate(boreal, dissolve=T)
 
 ## Calculate elevational gradients within each region
 # warning: can take hours
-morrone_4326_amazon_elev_mean <- terra::extract(DEM, morrone_4326_amazon, fun="mean", na.rm=T)
-morrone_4326_amazon_elev_min <- terra::extract(DEM, morrone_4326_amazon, fun="min", na.rm=T)
-morrone_4326_amazon_elev_max <- terra::extract(DEM, morrone_4326_amazon, fun="max", na.rm=T)
-morrone_4326_amazon_elev_median <- terra::extract(DEM, morrone_4326_amazon, fun="median", na.rm=T)
-
-morrone_amazon_elev_df <- cbind.data.frame(morrone_4326_amazon_elev_mean, morrone_4326_amazon_elev_min,
-                                           morrone_4326_amazon_elev_max, morrone_4326_amazon_elev_median)
-morrone_amazon_elev_df <- morrone_amazon_elev_df[,c(2,4,6,8)]
-names(morrone_amazon_elev_df) <- c('elev_mean_m','elev_min_m','elev_max_m','elev_median_m')
-morrone_amazon_elev_df$province <- morrone_4326_amazon$Provincias
+# morrone_4326_amazon_elev_mean <- terra::extract(DEM, morrone_4326_amazon, fun="mean", na.rm=T)
+# morrone_4326_amazon_elev_min <- terra::extract(DEM, morrone_4326_amazon, fun="min", na.rm=T)
+# morrone_4326_amazon_elev_max <- terra::extract(DEM, morrone_4326_amazon, fun="max", na.rm=T)
+# morrone_4326_amazon_elev_median <- terra::extract(DEM, morrone_4326_amazon, fun="median", na.rm=T)
+# 
+# morrone_amazon_elev_df <- cbind.data.frame(morrone_4326_amazon_elev_mean, morrone_4326_amazon_elev_min,
+#                                            morrone_4326_amazon_elev_max, morrone_4326_amazon_elev_median)
+# morrone_amazon_elev_df <- morrone_amazon_elev_df[,c(2,4,6,8)]
+# names(morrone_amazon_elev_df) <- c('elev_mean_m','elev_min_m','elev_max_m','elev_median_m')
+# morrone_amazon_elev_df$province <- morrone_4326_amazon$Provincias
 #write.csv(morrone_amazon_elev_df, "Regions/Morrone/Morrone2022_regions_elev_stats.csv", row.names=F)
 
 # dissolve macro-regions: boreal, south (chacoan is only one region anyway)
@@ -131,73 +131,80 @@ plot(DEM_PAS_boreal)
 plot(boreal_4674, add=T)
 global(DEM_PAS_boreal, quantile, probs=seq(0,1,0.1), na.rm=T)
 
+## Get area of each region
+region_areasqkm <- terra::expanse(morrone2022_4674_amazon, "km")
+region_clipped_areasqkm <- terra::expanse(morrone2022_amazonclip_4674, "km")
+sum(region_clipped_areasqkm)
+amazon_biogeog_areasqkm <- terra::expanse(amazon_study_area, "km")
+sum(region_clipped_areasqkm)/amazon_biogeog_areasqkm #% of provinces that cover Amazon biogeographic region
+
 ## What are we doing for start/end nodes?
 # Experimenting with Chacoan region
-chacoan_quant <- as.data.frame(t(global(DEM_PAS_chacoan, quantile, probs=seq(0,1,0.1), na.rm=T)))
-chacoan_quant$percentile <- seq(0,1,0.1)*100
-chacoan_quant$RK <- c(seq(1,10,1),NA)
-names(chacoan_quant) <- c('DEM','percentile','RK')
-
-chacoan_mat <- c(chacoan_quant[1,1], chacoan_quant[2,1], chacoan_quant[1,3],
-                 chacoan_quant[2,1], chacoan_quant[3,1], chacoan_quant[2,3],
-                 chacoan_quant[3,1], chacoan_quant[4,1], chacoan_quant[3,3],
-                 chacoan_quant[4,1], chacoan_quant[5,1], chacoan_quant[4,3],
-                 chacoan_quant[5,1], chacoan_quant[6,1], chacoan_quant[5,3],
-                 chacoan_quant[6,1], chacoan_quant[7,1], chacoan_quant[6,3],
-                 chacoan_quant[7,1], chacoan_quant[8,1], chacoan_quant[7,3],
-                 chacoan_quant[8,1], chacoan_quant[9,1], chacoan_quant[8,3],
-                 chacoan_quant[9,1], chacoan_quant[10,1], chacoan_quant[9,3],
-                 chacoan_quant[10,1], chacoan_quant[11,1], chacoan_quant[10,3])
-chacoan_mat <- matrix(chacoan_mat, ncol=3, byrow=T)
-chacoan_RK <- terra::classify(DEM_PAS_chacoan, chacoan_mat, include.lowest=T)
-plot(chacoan_RK)
-plot(chacoan_4326, add=T)
-chacoan_RK_90 <- terra::ifel(chacoan_RK>=9, 1, NA)
-plot(chacoan_RK_90)
-plot(chacoan_4326, add=T)
-plot(dissolved_PA_10km_4326, add=T)
-# this is probably too much territory and too many patches
-chacoan_RK_90_patches <- terra::patches(chacoan_RK_90, directions=8)
-plot(chacoan_RK_90_patches)
-plot(chacoan_4326, add=T)
-
-## We could possibly use our standard thresholds for Boreal and South regions because those elevations exist there
-boreal_lowland <- terra::ifel(DEM_PAS_boreal <= 500, 1, NA)
-boreal_highland <- terra::ifel(DEM_PAS_boreal >= 1500, 1, NA)
-plot(boreal_4674)
-plot(boreal_lowland, col='gold', legend=F, add=T)
-plot(boreal_highland, col='dodgerblue', add=T, legend=F)
-legend(-53,11, pch=c(15,15), legend=c("Lowland (< 500m)","Highland (> 1500m)"), 
-       col=c("gold","dodgerblue"), bty='n', ncol=1)
-hist(DEM_PAS_boreal, main='Boreal', xlab='Elevation (m)')
-
-hist(DEM_PAS_chacoan, main='Chacoan', xlab='Elevation (m)')
-
-
-south_lowland <- terra::ifel(DEM_PAS_south <= 500, 1, NA)
-south_highland <- terra::ifel(DEM_PAS_south >= 1500, 1, NA)
-plot(south_4674)
-#plot(dissolved_PA_10km, col='gray', add=T)
-plot(south_lowland, col='gold', add=T, legend=F)
-plot(south_highland, col='dodgerblue', add=T, legend=F)
-legend(-80,-20, pch=c(15,15), legend=c("Lowland (< 500m)","Highland (> 1500m)"), 
-       col=c("gold","dodgerblue"), bty='n', ncol=1, cex=0.75)
-hist(DEM_PAS_south, main='South', xlab='Elevation (m)')
-
-#south_highland_polygons <- terra::as.polygons(south_highland) #took maybe a minute, but returned one large feature. Making aggregate=F threw error that raster is too large
-#writeRaster(south_highland, filename='DEM/south_highland.tif', overwrite=T)
-
-chacoan_over500m <- terra::ifel(DEM_PAS_chacoan >= 500, 1, NA)
-chacoan_over600m <- terra::ifel(DEM_PAS_chacoan >= 600, 1, NA)
-chacoan_over700m <- terra::ifel(DEM_PAS_chacoan >= 700, 1, NA)
-chacoan_over800m <- terra::ifel(DEM_PAS_chacoan >= 800, 1, NA)
-plot(chacoan_4674, lwd=2)
-plot(dissolved_PA_10km, add=T, col='gray')
-plot(chacoan_4674, lwd=2, add=T)
-plot(chacoan_over500m, col='forestgreen', add=T, legend=F)
-plot(chacoan_over600m, col='orange', add=T, legend=F)
-plot(chacoan_over700m, col='purple', add=T, legend=F)
-plot(chacoan_over800m, col='blue', add=T, legend=F)
+# chacoan_quant <- as.data.frame(t(global(DEM_PAS_chacoan, quantile, probs=seq(0,1,0.1), na.rm=T)))
+# chacoan_quant$percentile <- seq(0,1,0.1)*100
+# chacoan_quant$RK <- c(seq(1,10,1),NA)
+# names(chacoan_quant) <- c('DEM','percentile','RK')
+# 
+# chacoan_mat <- c(chacoan_quant[1,1], chacoan_quant[2,1], chacoan_quant[1,3],
+#                  chacoan_quant[2,1], chacoan_quant[3,1], chacoan_quant[2,3],
+#                  chacoan_quant[3,1], chacoan_quant[4,1], chacoan_quant[3,3],
+#                  chacoan_quant[4,1], chacoan_quant[5,1], chacoan_quant[4,3],
+#                  chacoan_quant[5,1], chacoan_quant[6,1], chacoan_quant[5,3],
+#                  chacoan_quant[6,1], chacoan_quant[7,1], chacoan_quant[6,3],
+#                  chacoan_quant[7,1], chacoan_quant[8,1], chacoan_quant[7,3],
+#                  chacoan_quant[8,1], chacoan_quant[9,1], chacoan_quant[8,3],
+#                  chacoan_quant[9,1], chacoan_quant[10,1], chacoan_quant[9,3],
+#                  chacoan_quant[10,1], chacoan_quant[11,1], chacoan_quant[10,3])
+# chacoan_mat <- matrix(chacoan_mat, ncol=3, byrow=T)
+# chacoan_RK <- terra::classify(DEM_PAS_chacoan, chacoan_mat, include.lowest=T)
+# plot(chacoan_RK)
+# plot(chacoan_4326, add=T)
+# chacoan_RK_90 <- terra::ifel(chacoan_RK>=9, 1, NA)
+# plot(chacoan_RK_90)
+# plot(chacoan_4326, add=T)
+# plot(dissolved_PA_10km_4326, add=T)
+# # this is probably too much territory and too many patches
+# chacoan_RK_90_patches <- terra::patches(chacoan_RK_90, directions=8)
+# plot(chacoan_RK_90_patches)
+# plot(chacoan_4326, add=T)
+# 
+# ## We could possibly use our standard thresholds for Boreal and South regions because those elevations exist there
+# boreal_lowland <- terra::ifel(DEM_PAS_boreal <= 500, 1, NA)
+# boreal_highland <- terra::ifel(DEM_PAS_boreal >= 1500, 1, NA)
+# plot(boreal_4674)
+# plot(boreal_lowland, col='gold', legend=F, add=T)
+# plot(boreal_highland, col='dodgerblue', add=T, legend=F)
+# legend(-53,11, pch=c(15,15), legend=c("Lowland (< 500m)","Highland (> 1500m)"), 
+#        col=c("gold","dodgerblue"), bty='n', ncol=1)
+# hist(DEM_PAS_boreal, main='Boreal', xlab='Elevation (m)')
+# 
+# hist(DEM_PAS_chacoan, main='Chacoan', xlab='Elevation (m)')
+# 
+# 
+# south_lowland <- terra::ifel(DEM_PAS_south <= 500, 1, NA)
+# south_highland <- terra::ifel(DEM_PAS_south >= 1500, 1, NA)
+# plot(south_4674)
+# #plot(dissolved_PA_10km, col='gray', add=T)
+# plot(south_lowland, col='gold', add=T, legend=F)
+# plot(south_highland, col='dodgerblue', add=T, legend=F)
+# legend(-80,-20, pch=c(15,15), legend=c("Lowland (< 500m)","Highland (> 1500m)"), 
+#        col=c("gold","dodgerblue"), bty='n', ncol=1, cex=0.75)
+# hist(DEM_PAS_south, main='South', xlab='Elevation (m)')
+# 
+# #south_highland_polygons <- terra::as.polygons(south_highland) #took maybe a minute, but returned one large feature. Making aggregate=F threw error that raster is too large
+# #writeRaster(south_highland, filename='DEM/south_highland.tif', overwrite=T)
+# 
+# chacoan_over500m <- terra::ifel(DEM_PAS_chacoan >= 500, 1, NA)
+# chacoan_over600m <- terra::ifel(DEM_PAS_chacoan >= 600, 1, NA)
+# chacoan_over700m <- terra::ifel(DEM_PAS_chacoan >= 700, 1, NA)
+# chacoan_over800m <- terra::ifel(DEM_PAS_chacoan >= 800, 1, NA)
+# plot(chacoan_4674, lwd=2)
+# plot(dissolved_PA_10km, add=T, col='gray')
+# plot(chacoan_4674, lwd=2, add=T)
+# plot(chacoan_over500m, col='forestgreen', add=T, legend=F)
+# plot(chacoan_over600m, col='orange', add=T, legend=F)
+# plot(chacoan_over700m, col='purple', add=T, legend=F)
+# plot(chacoan_over800m, col='blue', add=T, legend=F)
 
 ## Sep 2024 update: repeat for newer Morrone ecoregions
 # Nov 2024 update: add Yungas province
@@ -230,3 +237,79 @@ names(morrone_amazon_elev_df) <- c('elev_mean_m','elev_min_m','elev_max_m','elev
 morrone_amazon_elev_df$province <- morrone2022_amazonclip_4674$Provincias
 morrone_amazon_elev_df$elev_range_m <- morrone_amazon_elev_df$elev_max_m - morrone_amazon_elev_df$elev_min_m
 #write.csv(morrone_amazon_elev_df, "Regions/Morrone2022/Morrone2022_regions_elev_stats.csv", row.names=F)
+
+## Get 10th and 90th percentile of elevation per region
+region_pct_list <- list()
+for (i in 1:nrow(morrone2022_amazonclip_4674)){
+  test_region <- morrone2022_amazonclip_4674[i]
+  test_region_DEM <- terra::crop(DEM_4674, test_region, mask=T)
+  test_region_DEM_df <- as.data.frame(t(global(test_region_DEM, quantile, probs=seq(0,1,0.1), na.rm=T)))
+  names(test_region_DEM_df) <- test_region$Provincias
+  region_pct_list[[i]] <- test_region_DEM_df
+}
+region_pct_df <- test <- do.call(cbind.data.frame, region_pct_list)
+region_pct_df$pct <- seq(0,1,0.1) #percentile
+#write.csv(region_pct_df, "Regions/Morrone2022/Morrone2022_regions_elevpct_stats.csv", row.names=F)
+
+# Apply the 10th and 90th percentiles as dynamic cutoffs for lowland and highland habitat, respectively
+highlow_region_list <- list()
+
+# For a given region, identify lowland and highland habitat 
+# based on 10th and 90th percentile cutoffs
+for (i in 1:nrow(morrone2022_amazonclip_4674)){
+  test_region <- morrone2022_amazonclip_4674[i]
+  test_region_name <- test_region$Provincias
+  test_region_data <- region_pct_df[,test_region_name]
+  test_region_cut10 <- test_region_data[2] #10th percentile
+  test_region_cut90 <- test_region_data[10] #90th percentile
+  test_region_DEM <- terra::crop(DEM_4674, test_region, mask=T)
+  test_region_lowland <- terra::ifel(test_region_DEM <= test_region_cut10, 1, NA)
+  test_region_highland <- terra::ifel(test_region_DEM >= test_region_cut90, 1, NA)
+  lowland_name <- paste0("Regions/Morrone2022/lowland/lowland_",gsub( " .*$", "", test_region_name), ".tif")
+  highland_name <- paste0("Regions/Morrone2022/highland/highland_",gsub( " .*$", "", test_region_name), ".tif")
+  terra::writeRaster(test_region_lowland, filename=lowland_name, overwrite=T)
+  terra::writeRaster(test_region_highland, filename=highland_name, overwrite=T)
+  
+  # Calculate lowland and highland area
+  # and percentage of region (should be about 10% each)
+  test_region_lowland_areasqkm <- terra::expanse(test_region_lowland, "km")[2]
+  test_region_highland_areasqkm <- terra::expanse(test_region_highland, "km")[2]
+  test_region_areasqkm <- terra::expanse(test_region, "km")
+  test_region_lowland_pct <- test_region_lowland_areasqkm/test_region_areasqkm
+  test_region_highland_pct <- test_region_highland_areasqkm/test_region_areasqkm
+  
+  # Calculate area and percentage of lowland and highland within protected areas
+  test_region_lowland_protected <- terra::mask(test_region_lowland, dissolved_PA_10km, inverse=F)
+  test_region_highland_protected <- terra::mask(test_region_highland, dissolved_PA_10km, inverse=F)
+  test_region_lowland_protected_areasqkm <- terra::expanse(test_region_lowland_protected, "km")[2]
+  test_region_highland_protected_areasqkm <- terra::expanse(test_region_highland_protected, "km")[2]
+  test_region_protected_areas <- terra::intersect(dissolved_PA_10km, test_region)
+  test_region_protected_pct <- sum(terra::expanse(test_region_protected_areas, "km"))/test_region_areasqkm
+  test_region_lowland_protected_pct <- test_region_lowland_protected_areasqkm/test_region_areasqkm
+  test_region_highland_protected_pct <- test_region_highland_protected_areasqkm/test_region_areasqkm
+  
+  test_region_df <- data.frame(region = test_region_name,
+                               region_areasqkm = test_region_areasqkm, 
+                               lowland_areasqkm = test_region_lowland_areasqkm$area,
+                               highland_areasqkm = test_region_highland_areasqkm$area,
+                               lowland_pct = test_region_lowland_pct$area,
+                               highland_pct = test_region_highland_pct$area,
+                               region_protected_pct = test_region_protected_pct,
+                               lowland_protected_areasqkm = test_region_lowland_protected_areasqkm$area,
+                               highland_protected_areasqkm = test_region_highland_protected_areasqkm$area,
+                               lowland_protected_pct = test_region_lowland_protected_pct$area,
+                               highland_protected_pct = test_region_highland_protected_pct$area)
+  
+  highlow_region_list[[i]] <- test_region_df
+}
+
+highlow_region_df <- do.call(rbind.data.frame, highlow_region_list)
+#write.csv(highlow_region_df, "Regions/Morrone2022/Morrone2022_regions_highlandlowland_stats.csv", row.names=F)
+
+#############
+plot(test_region)
+plot(test_region_lowland, add=T, col='gold')
+plot(test_region_highland, add=T, col='dodgerblue')
+plot(test_region_lowland_protected, add=T, col='green')
+plot(test_region_highland_protected, add=T, col='red')
+
