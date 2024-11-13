@@ -1,6 +1,6 @@
 ######################## Amazon least cost paths ##################################
 # Date: 10-23-24
-# updated: 11-10-24
+# updated: 11-12-24
 # Author: Ian McCullough, immccull@gmail.com
 ###################################################################################
 
@@ -972,6 +972,12 @@ lcps_dens <- create_lcp_density(conductance_crop_10km, lcps = x)
 conductance_crop_100km <- terra::aggregate(conductance_crop, fact=200, fun='mean', na.rm=T)
 lcps_dens100 <- create_lcp_density(conductance_crop_100km, lcps = x)
 #terra::writeRaster(lcps_dens100, filename="LeastCostPaths/LCP_density/LCP_density100km.tif", overwrite=T)
+
+## Create layer of end nodes that actually were selected for climate corridors
+endz <- x$end_PAcomp
+end_ptz <- terra::vect("end_nodes/dominions/end_points/combined_end_points/combined_end_points.shp")
+end_ptz_endz <- subset(end_ptz, end_ptz$PAcomplexI %in% endz)
+#terra::writeVector(end_ptz_endz, "end_nodes/dominions/end_points/combined_end_points/combined_end_points_corridorlink.shp")
 
 ###### old: before decisions made on 11/7 ####
 # Start and end nodes
