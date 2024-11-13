@@ -537,6 +537,12 @@ for (i in 132:nrow(start_points_boreal)) { #if need to start from not the first 
   tmp_condmat = NULL
 }
 
+lcp_list <- list.files(path='C:/Users/immccull/Documents/AmazonClimateCorridors/LeastCostPaths/dominions/boreal', pattern='.shp', full.names=T)
+lcp_list <- lapply(lcp_list, terra::vect)
+x <- terra::vect(lcp_list)
+x <- terra::project(x, "EPSG:29172")
+#writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_boreal.shp', overwrite=T)
+
 ### South region
 for (i in 1:nrow(start_points_south)) { #if need to start from not the first iteration
   # First, extract start point and k nearest end points
@@ -735,6 +741,12 @@ for (i in 1:nrow(start_points_south)) { #if need to start from not the first ite
   tmp_ras = NULL
   tmp_condmat = NULL
 }
+
+lcp_list <- list.files(path='C:/Users/immccull/Documents/AmazonClimateCorridors/LeastCostPaths/dominions/south', pattern='.shp', full.names=T)
+lcp_list <- lapply(lcp_list, terra::vect)
+x <- terra::vect(lcp_list)
+x <- terra::project(x, "EPSG:29172")
+#writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_south.shp', overwrite=T)
 
 ### Chacoan region
 
@@ -936,9 +948,30 @@ for (i in 1:nrow(start_points_chacoan)) { #if need to start from not the first i
   tmp_condmat = NULL
 }
 
+lcp_list <- list.files(path='C:/Users/immccull/Documents/AmazonClimateCorridors/LeastCostPaths/dominions/chacoan', pattern='.shp', full.names=T)
+lcp_list <- lapply(lcp_list, terra::vect)
+x <- terra::vect(lcp_list)
+x <- terra::project(x, "EPSG:29172")
+#writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_chacoan.shp', overwrite=T)
+
+### Combine least cost paths across regions
+lcp_list <- list.files(path='C:/Users/immccull/Documents/AmazonClimateCorridors/LeastCostPaths/CombinedLeastCostPaths', pattern='.shp', full.names=T)
+lcp_list <- lapply(lcp_list, terra::vect)
+x <- terra::vect(lcp_list)
+x <- terra::project(x, "EPSG:29172")
+#writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_amazon.shp', overwrite=T)
 
 
-### Combine individual least cost paths
+## Calculate LCP density (per 5 sq km) (1 km ran out of memory)
+conductance_crop <- terra::crop(conductance, amazon_study_area, mask=T)
+#conductance_crop_1km <- terra::aggregate(conductance_crop, fact=2, fun='mean', na.rm=T) #fun doesn't matter; only care about res
+conductance_crop_10km <- terra::aggregate(conductance_crop, fact=20, fun='mean', na.rm=T)
+lcps_dens <- create_lcp_density(conductance_crop_10km, lcps = x)
+#terra::writeRaster(lcps_dens, filename="LeastCostPaths/LCP_density/LCP_density10km.tif", overwrite=T)
+
+conductance_crop_100km <- terra::aggregate(conductance_crop, fact=200, fun='mean', na.rm=T)
+lcps_dens100 <- create_lcp_density(conductance_crop_100km, lcps = x)
+#terra::writeRaster(lcps_dens100, filename="LeastCostPaths/LCP_density/LCP_density100km.tif", overwrite=T)
 
 ###### old: before decisions made on 11/7 ####
 # Start and end nodes
