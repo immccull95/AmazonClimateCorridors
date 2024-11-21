@@ -6,6 +6,8 @@
 
 #### R libraries ####
 library(terra)
+library(factoextra)
+library(dplyr)
 
 #### Input data ####
 setwd("C:/Users/immccull/Documents/AmazonClimateCorridors")
@@ -250,6 +252,7 @@ for (i in 1:nrow(morrone2022_amazonclip_4674)){
 region_pct_df <- test <- do.call(cbind.data.frame, region_pct_list)
 region_pct_df$pct <- seq(0,1,0.1) #percentile
 #write.csv(region_pct_df, "Regions/Morrone2022/Morrone2022_regions_elevpct_stats.csv", row.names=F)
+region_pct_df <- read.csv("Regions/Morrone2022/Morrone2022_regions_elevpct_stats.csv")
 
 # Apply the 10th and 90th percentiles as dynamic cutoffs for lowland and highland habitat, respectively
 highlow_region_list <- list()
@@ -307,9 +310,100 @@ highlow_region_df <- do.call(rbind.data.frame, highlow_region_list)
 #write.csv(highlow_region_df, "Regions/Morrone2022/Morrone2022_regions_highlandlowland_stats.csv", row.names=F)
 
 #############
-plot(test_region)
-plot(test_region_lowland, add=T, col='gold')
-plot(test_region_highland, add=T, col='dodgerblue')
-plot(test_region_lowland_protected, add=T, col='green')
-plot(test_region_highland_protected, add=T, col='red')
+# plot(test_region)
+# plot(test_region_lowland, add=T, col='gold')
+# plot(test_region_highland, add=T, col='dodgerblue')
+# plot(test_region_lowland_protected, add=T, col='green')
+# plot(test_region_highland_protected, add=T, col='red')
+
+## 11-20-24 update
+# Compare Amazon regional characteristics
+frag_stats <- read.csv("LCC/province_fragmentation_stats.csv")
+elev_stats <- read.csv("Regions/Morrone2022/Morrone2022_regions_elev_stats.csv")
+#hilo_stats <- read.csv("Regions/Morrone2022/Morrone2022_regions_highlandlowland_stats.csv")
+highland_stats <- read.csv("Regions/Morrone2022/Morrone2022_regions_highland25003500m_stats.csv")
+protect_stats <- read.csv("RAISG/morrone2022_PA_stats.csv")
+lulc_stats <- read.csv("LCC/LCC_freq_table_byProvince.csv")
+extractive_stats <- terra::vect("Regions/Morrone2022/MinesOilGas/MinesOilGas_OverlapAnalysis.shp")
+
+# modify extractive shp into df
+extractive_stats <- as.data.frame(extractive_stats[,c(1,13,15)])
+names(extractive_stats) <- c('Province','IllegalMine_pct','OilGas_pct')
+
+# standardize columns so all dfs have a "Province" column
+names(elev_stats)[names(elev_stats) == 'province'] <- 'Province'
+names(protect_stats)[names(protect_stats) == 'region'] <- 'Province'
+#names(hilo_stats)[names(hilo_stats) == 'region'] <- 'Province'
+
+merger_list <- list(frag_stats, elev_stats, highland_stats, 
+                    protect_stats, lulc_stats, extractive_stats)
+region_df <- Reduce(function(x, y) merge(x, y, all=T), merger_list)
+
+plot(region_df$PA_complexes_pct ~ region_df$Forest, pch=16, 
+     xlab='Forest (%)', ylab='Protection (%)')
+
+plot(region_df$PA_complexes_pct ~ region_df$elev_range_m, pch=16, 
+     xlab='Elevation range (m)', ylab='Protection (%)')
+
+plot(region_df$Forest ~ region_df$elev_range_m, pch=16, 
+     xlab='Elevation range (m)', ylab='Forest (%)')
+
+plot(region_df$Forest ~ region_df$meanCAI, pch=16, 
+     xlab='Mean core area index (%)', ylab='Forest (%)')
+
+plot(region_df$PA_complexes_pct ~ region_df$meanCAI, pch=16, 
+     xlab='Mean core area index (%)', ylab='Protection (%)')
+
+main_var <- region_df[,c('Province','meanPatch_sqkm','meanCAI','meanENN',
+                         'elev_range_m','highland_all_pct','highland_protected_pct',
+                         'PA_complexes_pct','Forest','IllegalMine_pct','OilGas_pct')]
+cor(main_var[,c(2:11)], method='spearman')
+
+## Assign variable ranks
+main_var$meanPatch_sqkm_rank <- as.integer(rank(desc(main_var$meanPatch_sqkm)))
+main_var$Forest_rank <- as.integer(rank(desc(main_var$Forest)))
+main_var$meanCAI_rank <- as.integer(rank(desc(main_var$meanCAI)))
+#main_var$meanENN_rank <- as.integer(rank(desc(main_var$meanENN)))
+main_var$elev_range_m_rank <- as.integer(rank(desc(main_var$elev_range_m)))
+main_var$highland_all_pct_rank <- as.integer(rank(desc(main_var$highland_all_pct)))
+main_var$highland_protected_pct_rank <- as.integer(rank(desc(main_var$highland_protected_pct)))
+main_var$PA_complexes_pct_rank <- as.integer(rank(desc(main_var$PA_complexes_pct)))
+main_var$IllegalMine_pct_rank <- as.integer(rank(desc(main_var$IllegalMine_pct)))
+main_var$OilGas_pct_rank <- as.integer(rank(desc(main_var$OilGas_pct)))
+
+main_var$avg_rank <- rowMeans(main_var[,c(12:20)])
+main_var$Province_again <- main_var$Province
+
+## Try a PCA to develop a "climate resilience score"?
+## rescale all variables prior to PCA
+pca_data <- as.data.frame(scale(main_var[,c(2,3,5:9)]))
+rownames(pca_data) <- main_var$Province
+
+## run PCA
+province_pca <- princomp(~ meanPatch_sqkm + meanCAI + elev_range_m + highland_all_pct +
+                      highland_protected_pct + PA_complexes_pct + Forest,
+                    data=pca_data, cor=F, scores=T)
+par(mfrow=c(1,1))
+screeplot(province_pca, type='l')
+summary(province_pca)
+loadings(province_pca)
+
+fviz_pca_var(province_pca,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Avoid text overlapping
+)
+
+## calculate climate resilience index
+pca_scores <- as.data.frame(province_pca$scores)
+pca_scores$resilience_index <- sqrt((pca_scores$Comp.1 ^2) + (pca_scores$Comp.2 ^2) +
+                                    (pca_scores$Comp.3 ^2))
+summary(pca_scores$resilience_index)
+hist(pca_scores$resilience_index)
+pca_scores$Province <- main_var$Province
+
+# The results don't make sense for some reason; why is Para so high when its metrics are all so poor?
+pca_scores$resilience_index_rank <- as.integer(rank(desc(pca_scores$resilience_index)))
+
+#write.csv(pca_scores, file='LeastCostPaths/LCP_prioritization/LCP_priority_index.csv', row.names=F)
 

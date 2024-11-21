@@ -1,6 +1,6 @@
 ### Assembling data layers for Amazon climate corridor 
 # Date: 5-30-24
-# updated: 9-25-24: increase minimum PA size to 10km2
+# updated: 11-17-24: calculate LULC stats
 
 #### R libraries ####
 library(terra)
@@ -12,6 +12,7 @@ setwd("C:/Users/immccull/Documents/AmazonClimateCorridors")
 southamerica <- terra::vect("RAISG/SA_Countries/SouthAmerica.shp")
 
 amazon_study_area <- terra::vect("RAISG/Limites2023/Limites/Lim_Biogeografico.shp")
+amazon_study_area <- terra::project(amazon_study_area, "EPSG:29172")
 
 area <- terra::expanse(amazon_study_area, unit="km")
 
@@ -42,6 +43,9 @@ test <- terra::union(bosque_protector, losamigos)
 test[61,1] <- 'Perú'
 test[61,5] <- 'LosAmigos'
 bosque_protector <- terra::project(test, "EPSG:4326")
+
+# LULC
+LULC <- terra::rast("LCC/LCC_amazon_mosaic_500m.tif")
 
 #### Main program ####
 # calculate polygon size for each, remove any below 5km2
@@ -354,3 +358,37 @@ end_nodes_shp_pts <- terra::centroids(end_nodes_shp, inside=T)
 start_nodes_shp_pts <- terra::centroids(start_nodes_shp, inside=T)
 #writeVector(end_nodes_shp_pts, filename='end_nodes/end_nodes_amazon_points10km.shp', overwrite=T)
 #writeVector(start_nodes_shp_pts, filename='start_nodes/start_nodes_amazon_points10km.shp', overwrite=T)
+
+#### LULC statistics ####
+morrone_2022_amazonclip <- terra::vect("Regions/Morrone2022/Amazon_macroregions_fixedgeom_Amazonclip.shp")
+LULC <- terra::crop(LULC, amazon_study_area, mask=T)
+LULC_freq <- as.data.frame(freq(LULC))
+LULC_freq$pct <- (LULC_freq$count/sum(LULC_freq$count))*100
+LULC_freq$Type <- c('NA','Forest','Shrubland','Grassland','Cropland','Developed','Bare','Water','Wetland','Mangrove')
+#write.csv(LULC_freq[,c(2:5)], "LCC/LCC_freq_table.csv", row.names=F)
+
+# import Zonal Histogram output from QGIS
+# similar to ArcGIS Tabulate Area, but does not calculate %
+zonalhist <- terra::vect("LCC/ZonalHistogram/LCC500m_ZonalHistogram_provinces.shp")
+#zonalhist$areasqkm <- terra::expanse(zonalhist, "km")
+zonalhist <- as.data.frame(zonalhist)
+zonalhist$nCells <- rowSums(zonalhist[,c(12:21)], na.rm=T)
+zonalhist <- zonalhist[,c(1,6,12:22)]
+
+zonalhist$ZHISTO_0_pct <- (zonalhist$ZHISTO_0/zonalhist$nCells)*100
+zonalhist$ZHISTO_10_pct <- (zonalhist$ZHISTO_10/zonalhist$nCells)*100
+zonalhist$ZHISTO_20_pct <- (zonalhist$ZHISTO_20/zonalhist$nCells)*100
+zonalhist$ZHISTO_30_pct <- (zonalhist$ZHISTO_30/zonalhist$nCells)*100
+zonalhist$ZHISTO_40_pct <- (zonalhist$ZHISTO_40/zonalhist$nCells)*100
+zonalhist$ZHISTO_50_pct <- (zonalhist$ZHISTO_50/zonalhist$nCells)*100
+zonalhist$ZHISTO_60_pct <- (zonalhist$ZHISTO_60/zonalhist$nCells)*100
+zonalhist$ZHISTO_80_pct <- (zonalhist$ZHISTO_80/zonalhist$nCells)*100
+zonalhist$ZHISTO_90_pct <- (zonalhist$ZHISTO_90/zonalhist$nCells)*100
+zonalhist$ZHISTO_95_pct <- (zonalhist$ZHISTO_95/zonalhist$nCells)*100
+
+# clean up for export
+nicer_LULC <- zonalhist[,c(1,2,15:23)]
+colnames(nicer_LULC) <- c('Province','Dominion','Forest','Shrubland','Grassland','Cropland',
+                          'Developed','Bare','Water','Wetland','Mangrove')
+#rowSums(nicer_LULC[,c(3:11)], na.rm=T) # test to see if they add up to 100%; should be right on or very close
+#write.csv(nicer_LULC, "LCC/LCC_freq_table_byProvince.csv", row.names=F)

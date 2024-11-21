@@ -226,3 +226,4 @@ macro_summary2 <- macro_summary %>%
                    #median_elev_m=median(median_elev_m, na.rm=T),
                    nPA_complexes=n()) %>%
   as.data.frame()
+

@@ -1,6 +1,6 @@
 ######################## Amazon least cost paths ##################################
 # Date: 10-23-24
-# updated: 11-12-24
+# updated: 11-20-24; calculate highland habitat in each region
 # Author: Ian McCullough, immccull@gmail.com
 ###################################################################################
 
@@ -83,9 +83,11 @@ dominions_merged_dissolved_100kmbuff_4326 <- terra::project(dominions_merged_dis
 
 # identify lowland and highland elevations
 #lowland <- terra::ifel(DEM_studyarea_29172 <= 500, 1, NA)
-#highland <- terra::ifel(DEM_studyarea_29172 <= 3500 & DEM_studyarea_29172 >= 2500, 1, NA)
+highland <- terra::ifel(DEM_studyarea_29172 <= 3500 & DEM_studyarea_29172 >= 2500, 1, NA)
 #lowland <- terra::ifel(DEM15s_studyarea_29172 <= 500, 1, NA)
 #highland <- terra::ifel(DEM15s_studyarea_29172 <= 3500 & DEM15s_studyarea_29172 >= 2500, 1, NA)
+
+#terra::writeRaster(highland, "DEM/highland_all_90m_29172.tif", overwrite=T)
 
 # identify those elevations within protected areas
 #lowland_protected <- terra::mask(lowland, protected_areas, inverse=F, filename='start_nodes/dominions/lowland.tif', overwrite=T)
@@ -116,6 +118,29 @@ highland_protected <- terra::rast("end_nodes/dominions/highland.tif")
 lowland_protected_boreal <- terra::crop(lowland_protected, boreal, mask=T, filename='start_nodes/dominions/lowland_protected_boreal.tif', overwrite=T)
 lowland_protected_south <- terra::crop(lowland_protected, south, mask=T, filename='start_nodes/dominions/lowland_protected_south.tif', overwrite=T)
 lowland_protected_chacoan <- terra::crop(lowland_protected, chacoan, mask=T, filename='start_nodes/dominions/lowland_protected_chacoan.tif', overwrite=T)
+
+## How much highland habitat is in each region?
+# From QGIS zonal histogram (used 90m DEM)
+highland_protected_ZN <- terra::vect("end_nodes/dominions/highland_protected_zonalhist.shp")
+highland_protected_ZN$areasqkm <- terra::expanse(highland_protected_ZN, "km")
+highland_protected_ZN <- as.data.frame(highland_protected_ZN)
+highland_protected_ZN$highland_protected_pct <- ((highland_protected_ZN$HISTO_1*0.0081)/highland_protected_ZN$areasqkm)*100
+
+# Do the same for all highland habitat (includes unprotected)
+highland_all_ZN <- terra::vect("end_nodes/dominions/highland_all_zonalhist.shp")
+highland_all_ZN$areasqkm <- terra::expanse(highland_all_ZN, "km")
+highland_all_ZN <- as.data.frame(highland_all_ZN)
+highland_all_ZN$highland_all_pct <- ((highland_all_ZN$HISTO_1*0.0081)/highland_all_ZN$areasqkm)*100
+
+
+# prepare for export
+highland_protected_exp <- highland_protected_ZN[,c('Provincias','areasqkm','highland_protected_pct')]
+highland_all_exp <- highland_all_ZN[,c('Provincias','areasqkm','highland_all_pct')]
+
+names(highland_protected_exp) <- c('Province','highland_protected_areasqkm','highland_protected_pct')
+names(highland_all_exp) <- c('Province','highland_all_areasqkm','highland_all_pct')
+highland_exp <- merge(highland_protected_exp, highland_all_exp, by='Province')
+#write.csv(highland_exp, file="Regions/Morrone2022/Morrone2022_regions_highland25003500m_stats.csv")
 
 # still too big
 #lowland_protected_boreal_polygons <- terra::as.polygons(lowland_protected_boreal, aggregate=F, filename='start_nodes/dominions/lowland_protected_boreal_polygons.shp')
