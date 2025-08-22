@@ -255,6 +255,13 @@ hist(mines$MineriaI_1)
 mines_df <- data.frame(LCP_ID = LCP_1km$LCP_ID, illegalmines_pct = mines$MineriaI_1)
 #write.csv(mines_df, "LeastCostPaths/LCP_characteristics/LCP_illegalmines.csv", row.names=F)
 
+LCP_KBAs <- terra::vect("LeastCostPaths/LCP_characteristics/LCP_KBAs_OverlapAnalysis.shp")
+LCP_KBAs$LCP_ID <- LCP_1km$LCP_ID
+LCP_KBAs_df <- data.frame(LCP_KBAs[,c('LCP_ID','KBA_2917_1')])
+names(LCP_KBAs_df) <- c('LCP_ID','KBAs_pct')
+summary(LCP_KBAs_df$KBAs_pct)
+hist(LCP_KBAs_df$KBAs_pct)
+#write.csv(LCP_KBAs_df, "LeastCostPaths/LCP_characteristics/LCP_KBAs.csv", row.names=F)
 
 #### If already run, combine individual datasets ####
 LCP_roads_summary <- read.csv("LeastCostPaths/LCP_characteristics/LCP_roads.csv")
@@ -268,10 +275,11 @@ LCP_protection_df <- as.data.frame(LCP_protection)
 LCP_canopy <- read.csv("LeastCostPaths/LCP_characteristics/LCP_canopy.csv")
 LCP_mines <- read.csv("LeastCostPaths/LCP_characteristics/LCP_illegalmines.csv")
 LCP_petro <- read.csv("LeastCostPaths/LCP_characteristics/LCP_petroleo.csv")
+LCP_KBAs <- read.csv("LeastCostPaths/LCP_characteristics/LCP_KBAs.csv")
 
 merger_list <- list(LCP_canopy[,c(1:4,7)], LCP_elevation, LCP_protection_df, 
                     LCP_roads_summary, LCP_forest_patches_summary, LCP_forest[,c(5:6)],
-                    LCP_mines, LCP_petro)
+                    LCP_mines, LCP_petro, LCP_KBAs)
 LCP_export <- Reduce(function(x, y) merge(x, y, all=T), merger_list)
 LCP_export["nTotalRoads"][is.na(LCP_export["nTotalRoads"])] <- 0 #NAs are 0s (no roads turned up in intersection)
 LCP_export$nTotalRoads_perkm <- LCP_export$nTotalRoads/LCP_export$lengthkm
@@ -295,6 +303,7 @@ hist(LCP_export$nForestPatches_perkm)
 hist(LCP_export$nTotalRoads_perkm)
 hist(LCP_export$illegalmines_pct)
 hist(LCP_export$petro_pct)
+hist(LCP_export$KBAs_pct)
 
 # create summary table
 LCP_export_summary <- LCP_export %>%
@@ -335,6 +344,9 @@ LCP_export_summary <- LCP_export %>%
                    minIllegalMines_pct=min(illegalmines_pct, na.rm=T),
                    meanIllegalMines_pct=mean(illegalmines_pct, na.rm=T),
                    maxIllegalMines_pct=max(illegalmines_pct, na.rm=T),
+                   minKBAs_pct=min(KBAs_pct, na.rm=T),
+                   meanKBAs_pct=mean(KBAs_pct, na.rm=T),
+                   maxKBAs_pct=max(KBAs_pct, na.rm=T),
                    nLCPs=n()) %>%
   as.data.frame()
 LCP_export_summary$Provincias <- c('Guianan Lowlands','Guianan','Imeri','Madeira','Napo',
@@ -512,20 +524,32 @@ mines_plot <-ggplot(LCP_export_double, aes(x=Start, y=illegalmines_pct, fill=Sta
   ggtitle('K) Illegal mines')
 mines_plot
 
+KBAs_plot <-ggplot(LCP_export_double, aes(x=Start, y=KBAs_pct, fill=Start)) +
+  geom_boxplot()+
+  theme_classic()+
+  theme(axis.text.x=element_text(color='black', size=8, angle=70, hjust=1),
+        axis.text.y=element_text(color='black'),
+        legend.position=c('none'))+
+  scale_fill_manual(values=plot_colors)+
+  scale_y_continuous(name='KBAs (%)')+
+  scale_x_discrete(name='', labels=site_names)+
+  ggtitle('L) KBAs')
+KBAs_plot
+
 # Export multiplanel plot
 jpeg(filename='Manuscript/multiplot_LCP_characteristics.jpeg', height=10, width=8, units='in', res=300)
 grid.arrange(length_plot, elevation_plot, pct_protected_plot, canopy_plot, 
              forest_pct_plot, forest_patches_plot, forest_patches_perkm_plot,
-             roads_plot, roads_perkm_plot, petro_plot, mines_plot,
+             roads_plot, roads_perkm_plot, petro_plot, mines_plot, KBAs_plot,
              nrow=4)
 dev.off()
 
 #### LCP prioritization based on PCA ####
-# 11-21-24 update: added illegal mines and oil gas, but drove down % explained by first 3 PCs by about 5-6%
+# 11-21-24 update: added KBAs, illegal mines and oil gas, but drove down % explained by first 3 PCs by about 5-6%
 # first check correlations and distributions for select variables
 pca_variables <- c('canopy_mean','elevation_range','start_lowland_areasqkm','end_highland_areasqkm',
                    'pct_protection','nForestPatches_perkm','nTotalRoads_perkm','meanForestPatchArea',
-                   'pct_forest','petro_pct','illegalmines_pct','LCP_ID','Start') 
+                   'pct_forest','petro_pct','illegalmines_pct','KBAs_pct','LCP_ID','Start') 
 pca_variable_df <- LCP_export[,pca_variables]
 
 hist(pca_variable_df$canopy_mean)
@@ -539,22 +563,28 @@ hist(pca_variable_df$meanForestPatchArea)
 hist(pca_variable_df$pct_forest)
 hist(pca_variable_df$illegalmines_pct)
 hist(pca_variable_df$petro_pct)
+hist(pca_variable_df$KBAs_pct)
 
-cor(pca_variable_df[,c(1:11)], method='spearman') #check correlations among input variables
+cor(pca_variable_df[,c(1:12)], method='spearman') #check correlations among input variables
 
 # rescale road and forest patch variables so higher numbers are worse
 pca_variable_df$nForestPatches_perkm_inv <- scales::rescale(pca_variable_df$nForestPatches_perkm, to=c(1,0.01))
 pca_variable_df$nTotalRoads_perkm_inv <- scales::rescale(pca_variable_df$nTotalRoads_perkm, to=c(1,0.01))
 
+# rescale oil/gas and illegal mine variables so higher numbers are worse
+pca_variable_df$illegalmines_pct_inv <- scales::rescale(pca_variable_df$illegalmines_pct, to=c(1,0.01))
+pca_variable_df$petro_pct_inv <- scales::rescale(pca_variable_df$petro_pct, to=c(1,0.01))
+
 
 ## rescale all variables prior to PCA
-pca_data <- as.data.frame(scale(pca_variable_df[,c(1:5,8:11,14,15)]))
+pca_data <- as.data.frame(scale(pca_variable_df[,c(1:5,8,9,12,15:18)]))
 rownames(pca_data) <- pca_variable_df$LCP_ID
+cor(pca_variable_df[,c(1:12, 15:18)], method='spearman')
 
 ## run PCA
 pca_LCP <- princomp(~ canopy_mean + elevation_range + start_lowland_areasqkm + end_highland_areasqkm +
                       pct_protection + nForestPatches_perkm_inv + nTotalRoads_perkm_inv + meanForestPatchArea +
-                      pct_forest + illegalmines_pct + petro_pct,
+                      pct_forest + illegalmines_pct_inv + petro_pct_inv + KBAs_pct,
                     data=pca_data, cor=F, scores=T)
 par(mfrow=c(1,1))
 screeplot(pca_LCP, type='l')
@@ -625,7 +655,7 @@ priority_level_summary[is.na(priority_level_summary)] <- 0 #NAs are true 0s
 #write.csv(priority_level_summary, "LeastCostPaths/LCP_prioritization/LCP_priority_level_summary.csv", row.names=F)
 
 # summaries for ecological characteristics
-tmp_df <- cbind.data.frame(pca_scores[,c(10,12,14)], pca_variable_df)
+tmp_df <- cbind.data.frame(pca_scores[,c(13,15,17)], pca_variable_df)
 priority_level_summary2 <- tmp_df %>% 
   dplyr::group_by(priority_index_level, Start) %>% 
   dplyr::summarize(meanCanopy = mean(canopy_mean, na.rm=T),
@@ -637,6 +667,9 @@ priority_level_summary2 <- tmp_df %>%
                    meanStartareasqkm = mean(start_lowland_areasqkm, na.rm=T),
                    meanEndareasqkm = mean(end_highland_areasqkm, na.rm=T),
                    meanProtection = mean(pct_protection, na.rm=T),
+                   meanKBA_pct = mean(KBAs_pct, na.rm=T),
+                   meanpetro_pct = mean(petro_pct, na.rm=T),
+                   meanmines_pct = mean(illegalmines_pct, na.rm=T),
                    nLCPS = n()) %>%
   as.data.frame()
 write.csv(priority_level_summary2, "LeastCostPaths/LCP_prioritization/LCP_priority_level_characteristics_summary.csv", row.names=F)
@@ -644,7 +677,7 @@ write.csv(priority_level_summary2, "LeastCostPaths/LCP_prioritization/LCP_priori
 ## Merge LCP priority index values to LCP shapefiles for mapping in QGIS
 LCP_shp <- terra::vect("LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_amazon_wRegions.shp")
 LCP_shp_1km <- terra::vect("LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_amazon_1kmbuff.shp")
-LCP_priority_shp <- cbind(LCP_shp, pca_scores[,c(10:14)])
+LCP_priority_shp <- cbind(LCP_shp, pca_scores[,c(13:17)])
 #terra::writeVector(LCP_priority_shp, filename="LeastCostPaths/LCP_prioritization/LCP_prioritization.shp", overwrite=T)
-LCP_priority_shp_1km <- cbind(LCP_shp_1km, pca_scores[,c(10:14)])
+LCP_priority_shp_1km <- cbind(LCP_shp_1km, pca_scores[,c(13:17)])
 #terra::writeVector(LCP_priority_shp_1km, filename="LeastCostPaths/LCP_prioritization/LCP_prioritization_1kmbuff.shp", overwrite=T)

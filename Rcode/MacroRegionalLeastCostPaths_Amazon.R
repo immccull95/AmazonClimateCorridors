@@ -1,6 +1,6 @@
 ######################## Amazon least cost paths ##################################
 # Date: 10-23-24
-# updated: 11-20-24; calculate highland habitat in each region
+# updated: 8-22-25; recalculate highland habitat beginning at 2000m
 # Author: Ian McCullough, immccull@gmail.com
 ###################################################################################
 
@@ -23,6 +23,15 @@ chacoan <- terra::vect("Regions/Morrone2022/chacoan.shp")
 boreal <- terra::vect("Regions/Morrone2022/boreal.shp")
 south <- terra::vect("Regions/Morrone2022/south.shp")
 
+# Forest landscape integrity index (downloaded Aug 2025) for S America
+# Source: https://www.nature.com/articles/s41467-020-19493-3#Sec4
+#FLII_SA <- terra::rast("FLII/flii_SouthAmerica.tif")
+#plot(FLII_SA)
+#FLII_SA_high <- terra::ifel(FLII_SA >= 9600, 1, NA)
+#plot(FLII_SA_high)
+#writeRaster(FLII_SA_high, "FLII/FLII_SA_highintegrity.tif", overwrite=T)
+FLII_SA_high <- terra::rast("FLII/FLII_SA_highintegrity.tif")
+
 # # update 11-4-24: create 3 regional subsets
 # chacoan <- subset(morrone_2022_neotropics, morrone_2022_neotropics$Provincias=="Xingu-Tapajos province")
 # #terra::writeVector(chacoan, filename='Regions/Morrone2022/chacoan.shp', overwrite=T)
@@ -39,6 +48,7 @@ south <- terra::vect("Regions/Morrone2022/south.shp")
 # Amazon study area
 amazon_study_area <- terra::vect("RAISG/Limites2023/Limites/Lim_Biogeografico.shp")
 amazon_study_area <- terra::project(amazon_study_area, "EPSG:29172")
+amazon_study_area_4326 <- terra::project(amazon_study_area, "EPSG:4326")
 south <- terra::intersect(south, amazon_study_area) #some is outside Amazon basin
 
 plot(amazon_study_area)
@@ -83,11 +93,17 @@ dominions_merged_dissolved_100kmbuff_4326 <- terra::project(dominions_merged_dis
 
 # identify lowland and highland elevations
 #lowland <- terra::ifel(DEM_studyarea_29172 <= 500, 1, NA)
-highland <- terra::ifel(DEM_studyarea_29172 <= 3500 & DEM_studyarea_29172 >= 2500, 1, NA)
+#highland <- terra::ifel(DEM_studyarea_29172 <= 3500 & DEM_studyarea_29172 >= 2500, 1, NA)
 #lowland <- terra::ifel(DEM15s_studyarea_29172 <= 500, 1, NA)
 #highland <- terra::ifel(DEM15s_studyarea_29172 <= 3500 & DEM15s_studyarea_29172 >= 2500, 1, NA)
 
+# update Aug 2025: redefine lower limit of highland as 2000 m
+#highland <- terra::ifel(DEM_studyarea_29172 <= 3500 & DEM_studyarea_29172 >= 2000, 1, NA)
+highland <- terra::rast("DEM/highland_all_90m_29172_2000m.tif")
+
 #terra::writeRaster(highland, "DEM/highland_all_90m_29172.tif", overwrite=T)
+# save new highland layer with 2000 m lower limit
+#terra::writeRaster(highland, "DEM/highland_all_90m_29172_2000m.tif", overwrite=T)
 
 # identify those elevations within protected areas
 #lowland_protected <- terra::mask(lowland, protected_areas, inverse=F, filename='start_nodes/dominions/lowland.tif', overwrite=T)
@@ -132,6 +148,19 @@ highland_all_ZN$areasqkm <- terra::expanse(highland_all_ZN, "km")
 highland_all_ZN <- as.data.frame(highland_all_ZN)
 highland_all_ZN$highland_all_pct <- ((highland_all_ZN$HISTO_1*0.0081)/highland_all_ZN$areasqkm)*100
 
+# update Aug 2025: with all highland habitat using 2000 m as lower elevational threshold
+options(scipen = 999)
+highland_all_ZN_2K <- terra::vect("end_nodes/dominions/highland_all_zonalhist_2000m.shp")
+highland_all_ZN_2K$areasqkm <- terra::expanse(highland_all_ZN_2K, "km")
+highland_all_ZN_2K <- as.data.frame(highland_all_ZN_2K)
+highland_all_ZN_2K$highland_all_pct <- ((highland_all_ZN_2K$HISTO_1*0.0081)/highland_all_ZN_2K$areasqkm)*100
+
+# Compare % highland habitat across the 3 above datasets
+comp <- cbind.data.frame(highland_protected_ZN[,c(1,14)],
+                         highland_all_ZN[,c(1,14)],
+                         highland_all_ZN_2K[,c(1,14)])
+comp <- comp[,c(1,2,4,6)]
+names(comp) <- c('Provincias','highland_protected_2500m','highland_all_2500m','highland_all_2000m')
 
 # prepare for export
 highland_protected_exp <- highland_protected_ZN[,c('Provincias','areasqkm','highland_protected_pct')]
@@ -141,6 +170,7 @@ names(highland_protected_exp) <- c('Province','highland_protected_areasqkm','hig
 names(highland_all_exp) <- c('Province','highland_all_areasqkm','highland_all_pct')
 highland_exp <- merge(highland_protected_exp, highland_all_exp, by='Province')
 #write.csv(highland_exp, file="Regions/Morrone2022/Morrone2022_regions_highland25003500m_stats.csv")
+#write.csv(comp, file="Regions/Morrone2022/Morrone2022_regions_highland20003500m_stats.csv")
 
 # still too big
 #lowland_protected_boreal_polygons <- terra::as.polygons(lowland_protected_boreal, aggregate=F, filename='start_nodes/dominions/lowland_protected_boreal_polygons.shp')
@@ -248,6 +278,38 @@ end_poly_list <- lapply(end_poly_list, terra::vect)
 xx <- terra::vect(end_poly_list)
 #writeVector(xx, filename='end_nodes/dominions/end_polygons/combined_end_polygons/combined_end_polygons.shp', overwrite=T)
 
+# Aug 2025 update: use highland area defined as 2000-3500m, regardless of protection
+# but only using areas of high forest landscape integrity
+highland_amazon <- terra::crop(highland, dominions_merged_dissolved_100kmbuff, mask=T)
+plot(highland_amazon)
+
+# reduce FLII data before reprojecting
+FLII_SA_high_amazon <- terra::crop(FLII_SA_high, amazon_study_area_4326, mask=T)
+plot(amazon_study_area_4326)
+plot(FLII_SA_high_amazon, add=T)
+
+# reproject to same CRS as highland data
+FLII_amazon_high_29172 <- terra::project(FLII_SA_high_amazon, "EPSG:29172", method="near",
+                                         res=300, filename="FLII/FLII_amazon_high_29172.tif", overwrite=T)
+#original resolution was 300m; figured nearest neighbor resampling was OK because we are effectively using categorical data (high integrity only)
+
+# need extents to match, so try converting to polygon so can use as mask
+test <- terra::as.polygons(FLII_amazon_high_29172, aggregate=T, na.rm=T)
+FLII_amazon_high_29172_clip <- terra::crop(highland_amazon, test, mask=T)
+
+# check:
+plot(amazon_study_area)
+plot(highland_amazon, add=T)
+plot(FLII_amazon_high_29172_clip, add=T, col='orange')
+
+highland_amazon_highFLII_patches <- terra::patches(FLII_amazon_high_29172_clip, directions=8, allowGaps=F)
+highland_amazon_highFLII_polygons <- as.polygons(highland_amazon_highFLII_patches, aggregate=T, na.rm=T)
+#writeVector(highland_amazon_highFLII_polygons, "end_nodes/dominions/end_polygons/combined_end_polygons/combined_end_polygons_2K.shp")
+
+highland_amazon_highFLII_centers <- terra::centroids(highland_amazon_highFLII_polygons, inside=T)
+#writeVector(highland_amazon_highFLII_centers, "end_nodes/dominions/end_points/combined_end_points/combined_end_points_2K.shp")
+
+
 # # testing loop operations
 # # fails if there is no lowland area within a PA; can first extract only PAs with lowland?
 # # warning: this approach is slow without coarsening resolution
@@ -287,7 +349,9 @@ xx <- terra::vect(end_poly_list)
 
 #### Least cost paths ####
 start_points <- terra::vect("start_nodes/dominions/start_points/combined_start_points/combined_start_points.shp")
-end_points <- terra::vect("end_nodes/dominions/end_points/combined_end_points/combined_end_points.shp")
+#end_points <- terra::vect("end_nodes/dominions/end_points/combined_end_points/combined_end_points.shp")
+# with new 2000m lower elevation threshold, high forest integrity areas
+end_points <- terra::vect("end_nodes/dominions/end_points/combined_end_points/combined_end_points_2K.shp")
 
 start_points$start_ID <- paste0("start_ID_", seq(1,nrow(start_points)))
 end_points$end_ID <- paste0("end_ID_", seq(1,nrow(end_points)))
@@ -349,22 +413,31 @@ plot(conductance_allbuff)
 plot(morrone_2022_amazonclip, add=T)
 
 # Calculate full conductance matrix (may strain memory)
-# but this has some end nodes cut off
+# This is commented out so we can speed up processing by calculating
+# conductance matrix for necessary area around nodes
+# buffered condmat has some end nodes cut off
 #condmat <- create_cs(conductance_allbuff, neighbours=8, dem=NULL, max_slope=NULL)
 
-condmat <- create_cs(conductance, neighbours=8, dem=NULL, max_slope=NULL)
+#condmat <- create_cs(conductance, neighbours=8, dem=NULL, max_slope=NULL)
+
+## Aug 2025 notes
+# still calculating LCPs by region and not using full conductance matrix 
+# to speed up processing
+# changed output file names to remove end node PAcomplexID
+# because some end nodes are not in protected areas
+# can later intersect end node points with PAs
 
 ## Least cost paths for boreal region
-condmat_boreal <- create_cs(conductance_borealbuff, neighbours=8, dem=NULL, max_slope=NULL)
+#condmat_boreal <- create_cs(conductance_borealbuff, neighbours=8, dem=NULL, max_slope=NULL)
 lcp_neighbors <- 5
 knear <- as.data.frame(terra::nearby(x=start_points_boreal, y=end_points, k=lcp_neighbors))
 nearest_distance <- as.data.frame(terra::nearest(start_points, end_points)) #essentially, use nearest function for k=1
 end_points$newrowID <- seq(1, nrow(end_points), 1) #needed for subsetting within loop
 
 # tripped up: i=7,8 but found error source, 69 (end point outside condmat; switched to using whole thing, hope that doesn't make it run out of memory)
-#for (i in 1:nrow(start_points_boreal)) { #like this will run completely without crashing...let's see how far we get
+for (i in 1:nrow(start_points_boreal)) { #like this will run completely without crashing...let's see how far we get
 #for (i in 1:2) { #testing loop
-for (i in 132:nrow(start_points_boreal)) { #if need to start from not the first iteration
+#for (i in 132:nrow(start_points_boreal)) { #if need to start from not the first iteration
   # First, extract start point and k nearest end points
   test_start <- start_points_boreal[i] 
   test_end <- as.data.frame(terra::nearby(test_start, end_points, k=lcp_neighbors))
@@ -401,19 +474,26 @@ for (i in 132:nrow(start_points_boreal)) { #if need to start from not the first 
   lcp1 <- create_lcp(condmat, origin=test_start, destination=end1, cost_distance=T)
   lcp1$start_PAcomplexID <- test_start$PAcomplexI
   lcp1$lowland_areasqkm <- test_start$lowland_ar
-  lcp1$end_PAcomplexID <- end1$PAcomplexI
+  lcp1$end_ID <- end1$end_ID
   lcp1$highland_areasqkm <- end1$highland_a
   lcp1$lengthkm <- terra::perim(lcp1)/1000
   
-  lcp1name <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".shp")
+  # check if end point is in a protected area
+  end1PA <- terra::intersect(end1, protected_areas)
+  lcp1$end_protected <- ifelse(dim(end1PA)[1] < 1, "No", "Yes")
+  
+  #lcp1name <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".shp")
+  lcp1name <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_a", ".shp")
   terra::writeVector(lcp1, filename=lcp1name, overwrite=T)
   
-  lcp1namecsv <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".csv")
+  #lcp1namecsv <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".csv")
+  lcp1namecsv <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_a", ".csv")
   csv1 <- as.data.frame(lcp1)
   csv1$iteration <- i
   write.csv(csv1, lcp1namecsv, row.names=F)
   
-  plotname1 <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".jpeg")
+  #plotname1 <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".jpeg")
+  plotname1 <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_a", ".jpeg")
   jpeg(filename=plotname1, height=6, width=6, units='in', res=300)
   plot(conductance_allbuff)
   plot(boreal, add=T)
@@ -425,19 +505,26 @@ for (i in 132:nrow(start_points_boreal)) { #if need to start from not the first 
   lcp2 <- create_lcp(condmat, origin=test_start, destination=end2, cost_distance=T)
   lcp2$start_PAcomplexID <- test_start$PAcomplexI
   lcp2$lowland_areasqkm <- test_start$lowland_ar
-  lcp2$end_PAcomplexID <- end2$PAcomplexI
+  lcp2$end_ID <- end2$end_ID
   lcp2$highland_areasqkm <- end2$highland_a
   lcp2$lengthkm <- terra::perim(lcp2)/1000
   
-  lcp2name <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".shp")
+  # check if end point is in a protected area
+  end2PA <- terra::intersect(end2, protected_areas)
+  lcp2$end_protected <- ifelse(dim(end2PA)[1] < 1, "No", "Yes")
+  
+  #lcp2name <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".shp")
+  lcp2name <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_b", ".shp")
   terra::writeVector(lcp2, filename=lcp2name, overwrite=T)
   
-  lcp2namecsv <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".csv")
+  #lcp2namecsv <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".csv")
+  lcp2namecsv <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_b", ".csv")
   csv1 <- as.data.frame(lcp2)
   csv1$iteration <- i
   write.csv(csv1, lcp2namecsv, row.names=F)
   
-  plotname2 <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".jpeg")
+  #plotname2 <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".jpeg")
+  plotname2 <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_b", ".jpeg")
   jpeg(filename=plotname2, height=6, width=6, units='in', res=300)
   plot(conductance_allbuff)
   plot(boreal, add=T)
@@ -449,19 +536,26 @@ for (i in 132:nrow(start_points_boreal)) { #if need to start from not the first 
   lcp3 <- create_lcp(condmat, origin=test_start, destination=end3, cost_distance=T)
   lcp3$start_PAcomplexID <- test_start$PAcomplexI
   lcp3$lowland_areasqkm <- test_start$lowland_ar
-  lcp3$end_PAcomplexID <- end3$PAcomplexI
+  lcp3$end_ID <- end3$end_ID
   lcp3$highland_areasqkm <- end3$highland_a
   lcp3$lengthkm <- terra::perim(lcp3)/1000
   
-  lcp3name <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".shp")
+  # check if end point is in a protected area
+  end3PA <- terra::intersect(end3, protected_areas)
+  lcp3$end_protected <- ifelse(dim(end3PA)[1] < 1, "No", "Yes")
+  
+  #lcp3name <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".shp")
+  lcp3name <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_c", ".shp")
   terra::writeVector(lcp3, filename=lcp3name, overwrite=T)
   
-  lcp3namecsv <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".csv")
+  #lcp3namecsv <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".csv")
+  lcp3namecsv <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_c", ".csv")
   csv1 <- as.data.frame(lcp3)
   csv1$iteration <- i
   write.csv(csv1, lcp3namecsv, row.names=F)
   
-  plotname3 <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".jpeg")
+  #plotname3 <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".jpeg")
+  plotname3 <- paste0("LeastCostPaths/dominions/boreal/", "LCP_", test_start$PAcomplexI, "_c", ".jpeg")
   jpeg(filename=plotname3, height=6, width=6, units='in', res=300)
   plot(conductance_allbuff)
   plot(boreal, add=T)
@@ -470,6 +564,7 @@ for (i in 132:nrow(start_points_boreal)) { #if need to start from not the first 
   plot(lcp3, add=T, lwd=2, col='blue')
   dev.off()
   
+  # THIS NEXT PART NOT MODIFIED WITH AUG 2025 UPDATES
   # turning off 4 and 5 for now to save time
   # lcp4 <- create_lcp(condmat, origin=test_start, destination=end4, cost_distance=T)
   # lcp4$start_PAcomplexID <- test_start$PAcomplexI
@@ -560,6 +655,12 @@ for (i in 132:nrow(start_points_boreal)) { #if need to start from not the first 
   t5 = NULL
   tmp_ras = NULL
   tmp_condmat = NULL
+  
+  end1PA = NULL
+  end2PA = NULL
+  end3PA = NULL
+  end4PA = NULL
+  end5PA = NULL
 }
 
 lcp_list <- list.files(path='C:/Users/immccull/Documents/AmazonClimateCorridors/LeastCostPaths/dominions/boreal', pattern='.shp', full.names=T)
@@ -567,6 +668,7 @@ lcp_list <- lapply(lcp_list, terra::vect)
 x <- terra::vect(lcp_list)
 x <- terra::project(x, "EPSG:29172")
 #writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_boreal.shp', overwrite=T)
+#writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_boreal_2K.shp', overwrite=T)
 
 ### South region
 for (i in 1:nrow(start_points_south)) { #if need to start from not the first iteration
@@ -606,19 +708,26 @@ for (i in 1:nrow(start_points_south)) { #if need to start from not the first ite
   lcp1 <- create_lcp(condmat, origin=test_start, destination=end1, cost_distance=T)
   lcp1$start_PAcomplexID <- test_start$PAcomplexI
   lcp1$lowland_areasqkm <- test_start$lowland_ar
-  lcp1$end_PAcomplexID <- end1$PAcomplexI
+  lcp1$end_ID <- end1$end_ID
   lcp1$highland_areasqkm <- end1$highland_a
   lcp1$lengthkm <- terra::perim(lcp1)/1000
   
-  lcp1name <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".shp")
+  # check if end point is in a protected area
+  end1PA <- terra::intersect(end1, protected_areas)
+  lcp1$end_protected <- ifelse(dim(end1PA)[1] < 1, "No", "Yes")
+  
+  #lcp1name <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".shp")
+  lcp1name <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_a", ".shp")
   terra::writeVector(lcp1, filename=lcp1name, overwrite=T)
   
-  lcp1namecsv <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".csv")
+  #lcp1namecsv <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".csv")
+  lcp1namecsv <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_a", ".csv")
   csv1 <- as.data.frame(lcp1)
   csv1$iteration <- i
   write.csv(csv1, lcp1namecsv, row.names=F)
   
-  plotname1 <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".jpeg")
+  #plotname1 <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".jpeg")
+  plotname1 <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_a", ".jpeg")
   jpeg(filename=plotname1, height=6, width=6, units='in', res=300)
   plot(conductance_allbuff)
   plot(south, add=T)
@@ -630,19 +739,26 @@ for (i in 1:nrow(start_points_south)) { #if need to start from not the first ite
   lcp2 <- create_lcp(condmat, origin=test_start, destination=end2, cost_distance=T)
   lcp2$start_PAcomplexID <- test_start$PAcomplexI
   lcp2$lowland_areasqkm <- test_start$lowland_ar
-  lcp2$end_PAcomplexID <- end2$PAcomplexI
+  lcp2$end_ID <- end2$end_ID
   lcp2$highland_areasqkm <- end2$highland_a
   lcp2$lengthkm <- terra::perim(lcp2)/1000
   
-  lcp2name <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".shp")
+  # check if end point is in a protected area
+  end2PA <- terra::intersect(end2, protected_areas)
+  lcp2$end_protected <- ifelse(dim(end2PA)[1] < 1, "No", "Yes")
+  
+  #lcp2name <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".shp")
+  lcp2name <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_b", ".shp")
   terra::writeVector(lcp2, filename=lcp2name, overwrite=T)
   
-  lcp2namecsv <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".csv")
+  #lcp2namecsv <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".csv")
+  lcp2namecsv <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_b", ".csv")
   csv1 <- as.data.frame(lcp2)
   csv1$iteration <- i
   write.csv(csv1, lcp2namecsv, row.names=F)
   
-  plotname2 <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".jpeg")
+  #plotname2 <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".jpeg")
+  plotname2 <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_b", ".jpeg")
   jpeg(filename=plotname2, height=6, width=6, units='in', res=300)
   plot(conductance_allbuff)
   plot(south, add=T)
@@ -654,19 +770,26 @@ for (i in 1:nrow(start_points_south)) { #if need to start from not the first ite
   lcp3 <- create_lcp(condmat, origin=test_start, destination=end3, cost_distance=T)
   lcp3$start_PAcomplexID <- test_start$PAcomplexI
   lcp3$lowland_areasqkm <- test_start$lowland_ar
-  lcp3$end_PAcomplexID <- end3$PAcomplexI
+  lcp3$end_ID <- end3$end_ID
   lcp3$highland_areasqkm <- end3$highland_a
   lcp3$lengthkm <- terra::perim(lcp3)/1000
   
-  lcp3name <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".shp")
+  # check if end point is in a protected area
+  end3PA <- terra::intersect(end3, protected_areas)
+  lcp3$end_protected <- ifelse(dim(end3PA)[1] < 1, "No", "Yes")
+  
+  #lcp3name <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".shp")
+  lcp3name <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_c", ".shp")
   terra::writeVector(lcp3, filename=lcp3name, overwrite=T)
   
-  lcp3namecsv <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".csv")
+  #lcp3namecsv <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".csv")
+  lcp3namecsv <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_c", ".csv")
   csv1 <- as.data.frame(lcp3)
   csv1$iteration <- i
   write.csv(csv1, lcp3namecsv, row.names=F)
   
-  plotname3 <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".jpeg")
+  #plotname3 <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".jpeg")
+  plotname3 <- paste0("LeastCostPaths/dominions/south/", "LCP_", test_start$PAcomplexI, "_c", ".jpeg")
   jpeg(filename=plotname3, height=6, width=6, units='in', res=300)
   plot(conductance_allbuff)
   plot(south, add=T)
@@ -676,6 +799,7 @@ for (i in 1:nrow(start_points_south)) { #if need to start from not the first ite
   dev.off()
   
   # turning off 4 and 5 for now to save time
+  # not updated with Aug 2025 output file names
   # lcp4 <- create_lcp(condmat, origin=test_start, destination=end4, cost_distance=T)
   # lcp4$start_PAcomplexID <- test_start$PAcomplexI
   # lcp4$lowland_areasqkm <- test_start$lowland_ar
@@ -765,6 +889,12 @@ for (i in 1:nrow(start_points_south)) { #if need to start from not the first ite
   t5 = NULL
   tmp_ras = NULL
   tmp_condmat = NULL
+  
+  end1PA = NULL
+  end2PA = NULL
+  end3PA = NULL
+  end4PA = NULL
+  end5PA = NULL
 }
 
 lcp_list <- list.files(path='C:/Users/immccull/Documents/AmazonClimateCorridors/LeastCostPaths/dominions/south', pattern='.shp', full.names=T)
@@ -772,6 +902,7 @@ lcp_list <- lapply(lcp_list, terra::vect)
 x <- terra::vect(lcp_list)
 x <- terra::project(x, "EPSG:29172")
 #writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_south.shp', overwrite=T)
+#writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_south_2K.shp', overwrite=T)
 
 ### Chacoan region
 
@@ -812,19 +943,26 @@ for (i in 1:nrow(start_points_chacoan)) { #if need to start from not the first i
   lcp1 <- create_lcp(condmat, origin=test_start, destination=end1, cost_distance=T)
   lcp1$start_PAcomplexID <- test_start$PAcomplexI
   lcp1$lowland_areasqkm <- test_start$lowland_ar
-  lcp1$end_PAcomplexID <- end1$PAcomplexI
+  lcp1$end_ID <- end1$end_ID
   lcp1$highland_areasqkm <- end1$highland_a
   lcp1$lengthkm <- terra::perim(lcp1)/1000
   
-  lcp1name <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".shp")
+  # check if end point is in a protected area
+  end1PA <- terra::intersect(end1, protected_areas)
+  lcp1$end_protected <- ifelse(dim(end1PA)[1] < 1, "No", "Yes")
+  
+  #lcp1name <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".shp")
+  lcp1name <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_a", ".shp")
   terra::writeVector(lcp1, filename=lcp1name, overwrite=T)
   
-  lcp1namecsv <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".csv")
+  #lcp1namecsv <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".csv")
+  lcp1namecsv <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_a", ".csv")
   csv1 <- as.data.frame(lcp1)
   csv1$iteration <- i
   write.csv(csv1, lcp1namecsv, row.names=F)
   
-  plotname1 <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".jpeg")
+  #plotname1 <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end1$PAcomplexI,"_a", ".jpeg")
+  plotname1 <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_a", ".jpeg")
   jpeg(filename=plotname1, height=6, width=6, units='in', res=300)
   plot(conductance_allbuff)
   plot(chacoan, add=T)
@@ -836,19 +974,26 @@ for (i in 1:nrow(start_points_chacoan)) { #if need to start from not the first i
   lcp2 <- create_lcp(condmat, origin=test_start, destination=end2, cost_distance=T)
   lcp2$start_PAcomplexID <- test_start$PAcomplexI
   lcp2$lowland_areasqkm <- test_start$lowland_ar
-  lcp2$end_PAcomplexID <- end2$PAcomplexI
+  lcp2$end_ID <- end2$end_ID
   lcp2$highland_areasqkm <- end2$highland_a
   lcp2$lengthkm <- terra::perim(lcp2)/1000
   
-  lcp2name <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".shp")
+  # check if end point is in a protected area
+  end2PA <- terra::intersect(end2, protected_areas)
+  lcp2$end_protected <- ifelse(dim(end2PA)[1] < 1, "No", "Yes")
+  
+  #lcp2name <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".shp")
+  lcp2name <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_b", ".shp")
   terra::writeVector(lcp2, filename=lcp2name, overwrite=T)
   
-  lcp2namecsv <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".csv")
+  #lcp2namecsv <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".csv")
+  lcp2namecsv <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_b", ".csv")
   csv1 <- as.data.frame(lcp2)
   csv1$iteration <- i
   write.csv(csv1, lcp2namecsv, row.names=F)
   
-  plotname2 <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".jpeg")
+  #plotname2 <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end2$PAcomplexI,"_b", ".jpeg")
+  plotname2 <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_b", ".jpeg")
   jpeg(filename=plotname2, height=6, width=6, units='in', res=300)
   plot(conductance_allbuff)
   plot(chacoan, add=T)
@@ -860,19 +1005,26 @@ for (i in 1:nrow(start_points_chacoan)) { #if need to start from not the first i
   lcp3 <- create_lcp(condmat, origin=test_start, destination=end3, cost_distance=T)
   lcp3$start_PAcomplexID <- test_start$PAcomplexI
   lcp3$lowland_areasqkm <- test_start$lowland_ar
-  lcp3$end_PAcomplexID <- end3$PAcomplexI
+  lcp3$end_ID <- end3$end_ID
   lcp3$highland_areasqkm <- end3$highland_a
   lcp3$lengthkm <- terra::perim(lcp3)/1000
   
-  lcp3name <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".shp")
+  # check if end point is in a protected area
+  end3PA <- terra::intersect(end3, protected_areas)
+  lcp3$end_protected <- ifelse(dim(end3PA)[1] < 1, "No", "Yes")
+  
+  #lcp3name <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".shp")
+  lcp3name <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_c", ".shp")
   terra::writeVector(lcp3, filename=lcp3name, overwrite=T)
   
-  lcp3namecsv <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".csv")
+  #lcp3namecsv <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".csv")
+  lcp3namecsv <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_c", ".csv")
   csv1 <- as.data.frame(lcp3)
   csv1$iteration <- i
   write.csv(csv1, lcp3namecsv, row.names=F)
   
-  plotname3 <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".jpeg")
+  #plotname3 <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_", end3$PAcomplexI,"_c", ".jpeg")
+  plotname3 <- paste0("LeastCostPaths/dominions/chacoan/", "LCP_", test_start$PAcomplexI, "_c", ".jpeg")
   jpeg(filename=plotname3, height=6, width=6, units='in', res=300)
   plot(conductance_allbuff)
   plot(chacoan, add=T)
@@ -882,6 +1034,7 @@ for (i in 1:nrow(start_points_chacoan)) { #if need to start from not the first i
   dev.off()
   
   # turning off 4 and 5 for now to save time
+  # not updated with Aug 2025 file name changes
   # lcp4 <- create_lcp(condmat, origin=test_start, destination=end4, cost_distance=T)
   # lcp4$start_PAcomplexID <- test_start$PAcomplexI
   # lcp4$lowland_areasqkm <- test_start$lowland_ar
@@ -971,6 +1124,12 @@ for (i in 1:nrow(start_points_chacoan)) { #if need to start from not the first i
   t5 = NULL
   tmp_ras = NULL
   tmp_condmat = NULL
+  
+  end1PA = NULL
+  end2PA = NULL
+  end3PA = NULL
+  end4PA = NULL
+  end5PA = NULL
 }
 
 lcp_list <- list.files(path='C:/Users/immccull/Documents/AmazonClimateCorridors/LeastCostPaths/dominions/chacoan', pattern='.shp', full.names=T)
@@ -978,13 +1137,15 @@ lcp_list <- lapply(lcp_list, terra::vect)
 x <- terra::vect(lcp_list)
 x <- terra::project(x, "EPSG:29172")
 #writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_chacoan.shp', overwrite=T)
+#writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_chacoan_2K.shp', overwrite=T)
+
 
 ### Combine least cost paths across regions
-lcp_list <- list.files(path='C:/Users/immccull/Documents/AmazonClimateCorridors/LeastCostPaths/CombinedLeastCostPaths', pattern='.shp', full.names=T)
+lcp_list <- list.files(path='C:/Users/immccull/Documents/AmazonClimateCorridors/LeastCostPaths/CombinedLeastCostPaths', pattern='2K.shp', full.names=T)
 lcp_list <- lapply(lcp_list, terra::vect)
 x <- terra::vect(lcp_list)
 x <- terra::project(x, "EPSG:29172")
-#writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_amazon.shp', overwrite=T)
+#writeVector(x, filename='LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_amazon_2K.shp', overwrite=T)
 
 
 ## Calculate LCP density (per 5 sq km) (1 km ran out of memory)
@@ -993,6 +1154,7 @@ conductance_crop <- terra::crop(conductance, amazon_study_area, mask=T)
 conductance_crop_10km <- terra::aggregate(conductance_crop, fact=20, fun='mean', na.rm=T)
 lcps_dens <- create_lcp_density(conductance_crop_10km, lcps = x)
 #terra::writeRaster(lcps_dens, filename="LeastCostPaths/LCP_density/LCP_density10km.tif", overwrite=T)
+#terra::writeRaster(lcps_dens, filename="LeastCostPaths/LCP_density/LCP_density10km_2K.tif", overwrite=T)
 
 conductance_crop_100km <- terra::aggregate(conductance_crop, fact=200, fun='mean', na.rm=T)
 lcps_dens100 <- create_lcp_density(conductance_crop_100km, lcps = x)
@@ -1003,6 +1165,19 @@ endz <- x$end_PAcomp
 end_ptz <- terra::vect("end_nodes/dominions/end_points/combined_end_points/combined_end_points.shp")
 end_ptz_endz <- subset(end_ptz, end_ptz$PAcomplexI %in% endz)
 #terra::writeVector(end_ptz_endz, "end_nodes/dominions/end_points/combined_end_points/combined_end_points_corridorlink.shp")
+
+# For Aug 2025 update: create subset of protected end nodes and end nodes
+# that corridors actually ended in
+end_protected <- subset(x, x$end_protec=='Yes')
+end_unprotected <- subset(x, x$end_protec=='No')
+nrow(end_protected)/nrow(end_points)
+#writeVector(end_protected, file="end_nodes/dominions/end_points/combined_end_points_2Kprotected.shp", overwrite=T)
+#writeVector(end_unprotected, file="end_nodes/dominions/end_points/combined_end_points_2Kunprotected.shp", overwrite=T)
+
+endz <- unique(x$end_ID)
+end_pts_corridor_link <- subset(end_points, end_points$end_ID %in% endz)  
+nrow(end_pts_corridor_link)/nrow(end_points)
+#writeVector(end_pts_corridor_link, file="end_nodes/dominions/end_points/combined_end_points/combined_end_points_corridorlink2K.shp")
 
 ###### old: before decisions made on 11/7 ####
 # Start and end nodes
