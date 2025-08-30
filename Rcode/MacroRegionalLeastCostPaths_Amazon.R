@@ -109,9 +109,12 @@ highland <- terra::rast("DEM/highland_all_90m_29172_2000m.tif")
 #lowland_protected <- terra::mask(lowland, protected_areas, inverse=F, filename='start_nodes/dominions/lowland.tif', overwrite=T)
 #highland_protected <- terra::mask(highland, protected_areas, inverse=F, filename='end_nodes/dominions/highland.tif', overwrite=T)
 lowland_protected <- terra::rast("start_nodes/dominions/lowland.tif")
-highland_protected <- terra::rast("end_nodes/dominions/highland.tif")
+#highland_protected <- terra::rast("end_nodes/dominions/highland.tif")
 #lowland_protected <- terra::crop(lowland, protected_areas, mask=T, filename='start_nodes/dominions/lowland15s.tif', overwrite=T)
 #highland_protected <- terra::crop(highland, protected_areas, mask=T, filename='end_nodes/dominions/highland15s.tif', overwrite=T)
+
+#highland_protected <- terra::mask(highland, protected_areas, inverse=F, filename='end_nodes/dominions/highland_protected2K.tif', overwrite=T)
+highland_protected <- terra::rast("end_nodes/dominions/highland_protected2K.tif")
 
 # what if resample 90 m DEM lowland and highland to coarser res?
 # 10.54637 = 1000/94.81933, but fact argument only accepts integers
@@ -155,12 +158,19 @@ highland_all_ZN_2K$areasqkm <- terra::expanse(highland_all_ZN_2K, "km")
 highland_all_ZN_2K <- as.data.frame(highland_all_ZN_2K)
 highland_all_ZN_2K$highland_all_pct <- ((highland_all_ZN_2K$HISTO_1*0.0081)/highland_all_ZN_2K$areasqkm)*100
 
+highland_protected_ZN_2K <- terra::vect("end_nodes/dominions/highland_protected_zonalhist_2000m.shp")
+highland_protected_ZN_2K$areasqkm <- terra::expanse(highland_protected_ZN_2K, "km")
+highland_protected_ZN_2K <- as.data.frame(highland_protected_ZN_2K)
+highland_protected_ZN_2K$highland_protected_pct <- ((highland_protected_ZN_2K$HISTO_1*0.0081)/highland_protected_ZN_2K$areasqkm)*100
+
+
 # Compare % highland habitat across the 3 above datasets
 comp <- cbind.data.frame(highland_protected_ZN[,c(1,14)],
                          highland_all_ZN[,c(1,14)],
-                         highland_all_ZN_2K[,c(1,14)])
-comp <- comp[,c(1,2,4,6)]
-names(comp) <- c('Provincias','highland_protected_2500m','highland_all_2500m','highland_all_2000m')
+                         highland_all_ZN_2K[,c(1,14)],
+                         highland_protected_ZN_2K[,c(1,14)])
+comp <- comp[,c(1,2,4,6,8)]
+names(comp) <- c('Provincias','highland_protected_2500m','highland_all_2500m','highland_all_2000m','highland_protected_2000m')
 
 # prepare for export
 highland_protected_exp <- highland_protected_ZN[,c('Provincias','areasqkm','highland_protected_pct')]

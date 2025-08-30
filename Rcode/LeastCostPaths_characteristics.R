@@ -1,6 +1,6 @@
 ################# Amazon least cost path ecological characteristics ###############
 # Date: 11-14-24
-# updated: 11-21-24; LCP illegal mines and oil/gas calculations
+# updated: 8-29-25; new least cost paths
 # Author: Ian McCullough, immccull@gmail.com
 ###################################################################################
 
@@ -16,7 +16,8 @@ library(scales)
 #### Input data ####
 setwd("C:/Users/immccull/Documents/AmazonClimateCorridors")
 # buffered (1km) least cost paths
-LCP_1km <- terra::vect("LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_amazon_1kmbuff.shp")
+#LCP_1km <- terra::vect("LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_amazon_1kmbuff.shp")
+LCP_1km <- terra::vect("LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_amazon_2K_1kmbuff.shp")
 #test <- terra::vect("LeastCostPaths/CombinedLeastCostPaths/CombinedLeastCostPaths_amazon_wRegions.shp")
 
 # regions
@@ -76,6 +77,7 @@ LCP_canopy$LCP_ID <- LCP_1km$LCP_ID
 summary(LCP_canopy)
 hist(LCP_canopy$canopy_mean, main='Mean forest canopy height', xlab='m')
 #write.csv(LCP_canopy, "LeastCostPaths/LCP_characteristics/LCP_canopy.csv", row.names=F)
+#write.csv(LCP_canopy, "LeastCostPaths/LCP_characteristics/LCP_canopy_2K.csv", row.names=F)
 
 ## Terrain
 LCP_elevation_mean <- terra::extract(DEM, LCP_1km, fun='mean', na.rm=T)
@@ -89,9 +91,12 @@ summary(LCP_elevation)
 hist(LCP_elevation$elevation_mean, main='LCP mean elevation', xlab='Elevation (m)')
 hist(LCP_elevation$elevation_range, main='LCP elevation range', xlab='Elevation (m)')
 #write.csv(LCP_elevation, "LeastCostPaths/LCP_characteristics/LCP_elevation.csv", row.names=F)
+#write.csv(LCP_elevation, "LeastCostPaths/LCP_characteristics/LCP_elevation_2K.csv", row.names=F)
 
 
 ## LCP protection
+LCP_area <- terra::expanse(LCP_1km, unit='km')
+
 # code below does not work (too much data)
 # used QGIS overlap analysis instead
 # LCP_protection <- terra::intersect(LCP_1km, protected_areas)
@@ -142,25 +147,34 @@ combined_start_polygons <- terra::vect("start_nodes/dominions/start_polygons/com
 combined_start_polygons_df <- as.data.frame(combined_start_polygons)[,c(2:4)]
 names(combined_start_polygons_df) <- c('startDominion','startProvince','PAcomplexID')
 
-combined_end_polygons <- terra::vect("end_nodes/dominions/end_polygons/combined_end_polygons/combined_end_polygons.shp")
-combined_end_polygons_df <- as.data.frame(combined_end_polygons)[,c(2:4)]
-names(combined_end_polygons_df) <- c('endDominion','endProvince','PAcomplexID')
+#combined_end_polygons <- terra::vect("end_nodes/dominions/end_polygons/combined_end_polygons/combined_end_polygons.shp")
+combined_end_polygons <- terra::vect("end_nodes/dominions/end_polygons/combined_end_polygons/combined_end_polygons_2K.shp")
+combined_end_polygons_df <- as.data.frame(combined_end_polygons)#[,c(2:4)]
+#names(combined_end_polygons_df) <- c('endDominion','endProvince','PAcomplexID')
 
 #all_PAs <- terra::vect("protected_areas/Amazon_merged_PAs/Amazon_merged_PAs_dissolved.shp")
 #all_PAs <- terra::project(all_PAs, "EPSG:29172")
 #protection_list <- list()
 
-overlap <- terra::vect("LeastCostPaths/LCP_characteristics/LCP_protection_OverlapAnalysis.shp")
+#overlap <- terra::vect("LeastCostPaths/LCP_characteristics/LCP_protection_OverlapAnalysis.shp")
+overlap <- terra::vect("LeastCostPaths/LCP_characteristics/LCP_protection_OverlapAnalysis_2K.shp")
 overlap_df <- as.data.frame(overlap)
 
 protection_df <- merge(overlap_df, combined_start_polygons_df, by.x='start_PAco', by.y='PAcomplexID')
-protection_df <- merge(protection_df, combined_end_polygons_df, by.x='end_PAcomp', by.y='PAcomplexID')
-protection_df <- protection_df[,c(2,1, 6:11,13:17)]
-names(protection_df) <- c('startPAcomplexID','endPAcomplexID','cost',
-                          'start_lowland_areasqkm','end_highland_areasqkm',
-                          'lengthkm','mainProvince','mainDominion','pct_protection',
-                          'startDominion','startProvince','endDominion','endProvince')
+#protection_df <- merge(protection_df, combined_end_polygons_df, by.x='end_PAcomp', by.y='PAcomplexID')
+#protection_df <- protection_df[,c(2,1, 6:11,13:17)]
+#names(protection_df) <- c('startPAcomplexID','endPAcomplexID','cost',
+#                          'start_lowland_areasqkm','end_highland_areasqkm',
+#                          'lengthkm','mainProvince','mainDominion','pct_protection',
+#                          'startDominion','startProvince','endDominion','endProvince')
+protection_df <- protection_df[,c(1,5,6,7,8,9,11,12,13)]
+names(protection_df) <- c('startPAcomplexID','cost','start_lowland_areasqkm','endID',
+                          'lengthkm','end_protec','pct_protection','startDominion',
+                          'startProvince')
+
 #write.csv(protection_df, "LeastCostPaths/LCP_characteristics/LCP_protection.csv", row.names=F)
+write.csv(protection_df, "LeastCostPaths/LCP_characteristics/LCP_protection_2K.csv", row.names=F)
+
 
 ## does not work; terra::intersect keeps crashing with large datasets
 # for (i in 1:nrow(LCP_1km)){
@@ -207,6 +221,7 @@ LCP_forest$pct_forest <- ifelse(LCP_forest$pct_forest >=100, 100, LCP_forest$pct
 LCP_forest$LCP_ID <- LCP_1km$LCP_ID
 hist(LCP_forest$pct_forest)
 #write.csv(LCP_forest, "LeastCostPaths/LCP_characteristics/LCP_pct_forest.csv", row.names=F)
+#write.csv(LCP_forest, "LeastCostPaths/LCP_characteristics/LCP_pct_forest_2K.csv", row.names=F)
 
 
 ## Forest patches crossed
@@ -226,6 +241,7 @@ LCP_forest_patches_summary <- LCP_forest_patches_df[,c('LCP_ID','start_PAco','pa
 summary(LCP_forest_patches_summary)
 hist(LCP_forest_patches_summary$nForestPatches, main='Forest patches crossed')
 #write.csv(LCP_forest_patches_summary, "LeastCostPaths/LCP_characteristics/LCP_forest_patches.csv", row.names=F)
+#write.csv(LCP_forest_patches_summary, "LeastCostPaths/LCP_characteristics/LCP_forest_patches_2K.csv", row.names=F)
 
 ## Road crossings
 # this was fast!
@@ -238,30 +254,38 @@ LCP_roads_summary <- LCP_roads_df[,c('LCP_ID','tipo')] %>%
 hist(LCP_roads_summary$nTotalRoads)
 summary(LCP_roads_summary$nTotalRoads)
 #write.csv(LCP_roads_summary, "LeastCostPaths/LCP_characteristics/LCP_roads.csv", row.names=F)
+#write.csv(LCP_roads_summary, "LeastCostPaths/LCP_characteristics/LCP_roads_2K.csv", row.names=F)
 
 ## Petroleo (oil and gas 2024 dataset from RAISG) (petroleo2024)
 # Done quickly (< 30 sec) in QGIS; afraid terra::intersect would have crashed with a dataset this large (as often it does)
-petro <- terra::vect("RAISG/petroleo2024/petroleo_29172_LCP_OverlapAnalysis.shp")
+#petro <- terra::vect("RAISG/petroleo2024/petroleo_29172_LCP_OverlapAnalysis.shp")
+petro <- terra::vect("RAISG/petroleo2024/petroleo_29172_LCP_OverlapAnalysis_2K.shp")
 summary(petro$petroleo_1)
 hist(petro$petroleo_1)
 petro_df <- data.frame(LCP_ID = LCP_1km$LCP_ID, petro_pct = petro$petroleo_1)
 #write.csv(petro_df, "LeastCostPaths/LCP_characteristics/LCP_petroleo.csv", row.names=F)
+#write.csv(petro_df, "LeastCostPaths/LCP_characteristics/LCP_petroleo_2K.csv", row.names=F)
 
 ## Illegal mines (MIneriaIlegal2023 dataset from RAISG) (MIneriaIlegal2023)
 # Done quickly (< 1 min) in QGIS; afraid terra::intersect would have crashed with a dataset this large (as often it does)
-mines <- terra::vect("RAISG/MIneriaIlegal2023/MIneriaIlegal/MineriaIlegal_pol_29172_LCP_OverlapAnalysis.shp")
+#mines <- terra::vect("RAISG/MIneriaIlegal2023/MIneriaIlegal/MineriaIlegal_pol_29172_LCP_OverlapAnalysis.shp")
+mines <- terra::vect("RAISG/MIneriaIlegal2023/MIneriaIlegal/MineriaIlegal_pol_29172_LCP_OverlapAnalysis_2K.shp")
 summary(mines$MineriaI_1)
 hist(mines$MineriaI_1)
 mines_df <- data.frame(LCP_ID = LCP_1km$LCP_ID, illegalmines_pct = mines$MineriaI_1)
 #write.csv(mines_df, "LeastCostPaths/LCP_characteristics/LCP_illegalmines.csv", row.names=F)
+#write.csv(mines_df, "LeastCostPaths/LCP_characteristics/LCP_illegalmines_2K.csv", row.names=F)
 
-LCP_KBAs <- terra::vect("LeastCostPaths/LCP_characteristics/LCP_KBAs_OverlapAnalysis.shp")
+#LCP_KBAs <- terra::vect("LeastCostPaths/LCP_characteristics/LCP_KBAs_OverlapAnalysis.shp")
+LCP_KBAs <- terra::vect("LeastCostPaths/LCP_characteristics/LCP_KBAs_OverlapAnalysis_2K.shp")
 LCP_KBAs$LCP_ID <- LCP_1km$LCP_ID
 LCP_KBAs_df <- data.frame(LCP_KBAs[,c('LCP_ID','KBA_2917_1')])
 names(LCP_KBAs_df) <- c('LCP_ID','KBAs_pct')
 summary(LCP_KBAs_df$KBAs_pct)
 hist(LCP_KBAs_df$KBAs_pct)
 #write.csv(LCP_KBAs_df, "LeastCostPaths/LCP_characteristics/LCP_KBAs.csv", row.names=F)
+#write.csv(LCP_KBAs_df, "LeastCostPaths/LCP_characteristics/LCP_KBAs_2K.csv", row.names=F)
+
 
 #### If already run, combine individual datasets ####
 LCP_roads_summary <- read.csv("LeastCostPaths/LCP_characteristics/LCP_roads.csv")
@@ -277,6 +301,19 @@ LCP_mines <- read.csv("LeastCostPaths/LCP_characteristics/LCP_illegalmines.csv")
 LCP_petro <- read.csv("LeastCostPaths/LCP_characteristics/LCP_petroleo.csv")
 LCP_KBAs <- read.csv("LeastCostPaths/LCP_characteristics/LCP_KBAs.csv")
 
+# updated Aug 2025 datasets
+LCP_roads_summary <- read.csv("LeastCostPaths/LCP_characteristics/LCP_roads_2K.csv")
+LCP_forest_patches_summary <- read.csv("LeastCostPaths/LCP_characteristics/LCP_forest_patches_2K.csv")
+LCP_forest <- read.csv("LeastCostPaths/LCP_characteristics/LCP_pct_forest_2K.csv")
+LCP_elevation <- read.csv("LeastCostPaths/LCP_characteristics/LCP_elevation_2K.csv")
+LCP_protection <- read.csv("LeastCostPaths/LCP_characteristics/LCP_protection_2K.csv")
+LCP_protection$LCP_ID <- seq(1,nrow(LCP_protection),1)
+LCP_protection_df <- as.data.frame(LCP_protection)
+LCP_canopy <- read.csv("LeastCostPaths/LCP_characteristics/LCP_canopy_2K.csv")
+LCP_mines <- read.csv("LeastCostPaths/LCP_characteristics/LCP_illegalmines_2K.csv")
+LCP_petro <- read.csv("LeastCostPaths/LCP_characteristics/LCP_petroleo_2K.csv")
+LCP_KBAs <- read.csv("LeastCostPaths/LCP_characteristics/LCP_KBAs_2K.csv")
+
 merger_list <- list(LCP_canopy[,c(1:4,7)], LCP_elevation, LCP_protection_df, 
                     LCP_roads_summary, LCP_forest_patches_summary, LCP_forest[,c(5:6)],
                     LCP_mines, LCP_petro, LCP_KBAs)
@@ -285,9 +322,12 @@ LCP_export["nTotalRoads"][is.na(LCP_export["nTotalRoads"])] <- 0 #NAs are 0s (no
 LCP_export$nTotalRoads_perkm <- LCP_export$nTotalRoads/LCP_export$lengthkm
 LCP_export$nForestPatches_perkm <- LCP_export$nForestPatches/LCP_export$lengthkm
 #write.csv(LCP_export, "LeastCostPaths/LCP_characteristics/LCP_combined_characteristics.csv", row.names=F)
+#write.csv(LCP_export, "LeastCostPaths/LCP_characteristics/LCP_combined_characteristics_2K.csv", row.names=F)
 
 ## if already run all the merging above:
-LCP_export <- read.csv("LeastCostPaths/LCP_characteristics/LCP_combined_characteristics.csv")
+#LCP_export <- read.csv("LeastCostPaths/LCP_characteristics/LCP_combined_characteristics.csv")
+LCP_export <- read.csv("LeastCostPaths/LCP_characteristics/LCP_combined_characteristics_2K.csv")
+
 
 hist(LCP_export$canopy_mean)
 hist(LCP_export$elevation_range)
@@ -353,6 +393,8 @@ LCP_export_summary$Provincias <- c('Guianan Lowlands','Guianan','Imeri','Madeira
                                    'Para','Rondonia','Roraima','Ucayali','Xingu-Tapajos','Yungas')
 LCP_export_summary$Prov_abbr <- c('GL','GUI','IME','MAD','NAP','PAR','RON','ROR','UCA','XT','YUN')
 #write.csv(LCP_export_summary, "LeastCostPaths/LCP_characteristics/LCP_combined_characteristics_summary.csv", row.names=F)
+#write.csv(LCP_export_summary, "LeastCostPaths/LCP_characteristics/LCP_combined_characteristics_summary_2K.csv", row.names=F)
+
 
 ## Some visuals
 LCP_export$Start <- LCP_export$startProvince
@@ -537,7 +579,8 @@ KBAs_plot <-ggplot(LCP_export_double, aes(x=Start, y=KBAs_pct, fill=Start)) +
 KBAs_plot
 
 # Export multiplanel plot
-jpeg(filename='Manuscript/multiplot_LCP_characteristics.jpeg', height=10, width=8, units='in', res=300)
+#jpeg(filename='Manuscript/multiplot_LCP_characteristics.jpeg', height=10, width=8, units='in', res=300)
+jpeg(filename='Manuscript/multiplot_LCP_characteristics_2K.jpeg', height=10, width=8, units='in', res=300)
 grid.arrange(length_plot, elevation_plot, pct_protected_plot, canopy_plot, 
              forest_pct_plot, forest_patches_plot, forest_patches_perkm_plot,
              roads_plot, roads_perkm_plot, petro_plot, mines_plot, KBAs_plot,

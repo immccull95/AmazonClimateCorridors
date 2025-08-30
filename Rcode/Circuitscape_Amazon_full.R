@@ -165,11 +165,23 @@ unprotected_high_current <- terra::mask(high_current, pa_mask, inverse=T)
 plot(unprotected_high_current)
 #writeRaster(unprotected_high_current, "julia/1km/output/high_current1km_unprotected_cropped.tif", overwrite=T)
 
-hc_unprotected_patches <- terra::patches(unprotected_high_current, directions=8, allowGaps=F,
-                                         filename="julia/1km/output/high_current1km_unprotected_patches.tif")
+#hc_unprotected_patches <- terra::patches(unprotected_high_current, directions=8, allowGaps=F,
+#                                         filename="julia/1km/output/high_current1km_unprotected_patches.tif")
 
-hc_protected_patches <- terra::patches(protected_high_current, directions=8, allowGaps=F,
-                                         filename="julia/1km/output/high_current1km_protected_patches.tif")
+hc_unprotected_patches <- terra::rast("julia/1km/output/high_current1km_unprotected_patches.tif")
+
+#hc_protected_patches <- terra::patches(protected_high_current, directions=8, allowGaps=F,
+#                                         filename="julia/1km/output/high_current1km_protected_patches.tif")
+
+hc_protected_patches <- terra::rast("julia/1km/output/high_current1km_protected_patches.tif")
+
+# what percentage of high current areas is protected?
+a <- sum(expanse(as.polygons(hc_protected_patches), "km"))
+b <- sum(expanse(as.polygons(hc_unprotected_patches), "km"))
+
+#a <- expanse(protected_high_current, "km") #slow
+#b <- expanse(high_current, "km")
+b/a
 
 ## patch analysis of high-current areas
 library(landscapemetrics)
@@ -181,8 +193,10 @@ summary(unprotected_patch_area$value)
 test <- as.data.frame(unprotected_patch_area)
 test$sqkm <- test$value*0.01
 hist(unprotected_patch_area$value)
+summary(test)
 
 protected_patch_area <- lsm_p_area(hc_protected_patches, directions=8)
 summary(protected_patch_area$value)
 test2 <- as.data.frame(protected_patch_area)
 test2$sqkm <- test2$value*0.01
+summary(test2)
